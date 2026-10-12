@@ -461,6 +461,22 @@ export default function Stage4StudioPage() {
           )}
         </div>
       </main>
+
+      {/* Studio Footer */}
+      <footer className="border-t border-slate-850 py-4 px-6 text-center text-xs text-slate-500 bg-slate-950">
+        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>ChallengerPage • AI-Powered Counter-Landing Page Studio</span>
+          <div className="flex items-center gap-4">
+            <a href="/terms" className="hover:text-slate-400 transition-colors">
+              Terms of Service
+            </a>
+            <span className="text-slate-800">•</span>
+            <a href="/privacy" className="hover:text-slate-400 transition-colors">
+              Privacy Policy
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

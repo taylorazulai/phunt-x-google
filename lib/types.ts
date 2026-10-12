@@ -87,3 +87,14 @@ export interface MockPreset {
   data: ChallengerPageData;
   reviews?: CompetitorReview[];
 }
+
+export interface LeadRecord {
+  id: string;
+  firstName: string;
+  lastName: string;
+  name: string; // Combined full name convenience field
+  email: string;
+  pageId?: string;
+  sourceAction: "share_link" | "copy_html" | "copy_markdown" | "email_share";
+  createdAt: number;
+}

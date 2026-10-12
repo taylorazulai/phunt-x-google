@@ -1,15 +1,21 @@
 import { Redis } from "@upstash/redis";
-import { ChallengerPageData } from "./types";
+import { ChallengerPageData, LeadRecord } from "./types";
 import { MOCK_PRESETS } from "./mock-data";
 
 // In-memory zero-config fallback storage for local development & resilient demoing
 declare global {
   var _pageCache: Map<string, ChallengerPageData> | undefined;
+  var _leadCache: LeadRecord[] | undefined;
 }
 
 const pageCache = globalThis._pageCache ?? new Map<string, ChallengerPageData>();
 if (!globalThis._pageCache) {
   globalThis._pageCache = pageCache;
+}
+
+const leadCache = globalThis._leadCache ?? [];
+if (!globalThis._leadCache) {
+  globalThis._leadCache = leadCache;
 }
 
 // 30 Days TTL in seconds
@@ -110,4 +116,44 @@ export async function getPage(id: string): Promise<ChallengerPageData | null> {
   }
 
   return null;
+}
+
+/**
+ * Persists a captured founder lead to Upstash Redis and in-memory cache.
+ */
+export async function saveLead(lead: LeadRecord): Promise<void> {
+  // Always update in-memory cache
+  leadCache.push(lead);
+
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const emailKey = `lead:${lead.email.toLowerCase().trim()}`;
+      await redis.set(emailKey, JSON.stringify(lead));
+      await redis.lpush("leads:list", JSON.stringify(lead));
+    } catch (err) {
+      console.warn("Upstash saveLead failed, retained in memory cache:", err);
+    }
+  }
+}
+
+/**
+ * Helper to retrieve stored leads from in-memory cache or Redis list.
+ */
+export async function getLeads(): Promise<LeadRecord[]> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const items = await redis.lrange("leads:list", 0, -1);
+      if (Array.isArray(items) && items.length > 0) {
+        return items.map((item) =>
+          typeof item === "string" ? JSON.parse(item) : item
+        );
+      }
+    } catch (err) {
+      console.warn("Upstash getLeads failed, returning in-memory cache:", err);
+    }
+  }
+
+  return leadCache;
 }

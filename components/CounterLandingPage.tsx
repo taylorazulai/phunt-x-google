@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { ChallengerPageData } from "@/lib/types";
 import { DynamicIcon } from "@/components/DynamicIcon";
 import {
@@ -446,9 +447,19 @@ export function CounterLandingPage({
               {data.challengerName} vs. {data.competitorName}
             </span>
           </div>
-          <div>
-            Powered by{" "}
-            <span className="font-semibold text-indigo-400">ChallengerPage</span>
+          <div className="flex items-center gap-4">
+            <Link href="/terms" className="hover:text-slate-400 transition-colors">
+              Terms of Service
+            </Link>
+            <span className="text-slate-800">•</span>
+            <Link href="/privacy" className="hover:text-slate-400 transition-colors">
+              Privacy Policy
+            </Link>
+            <span className="text-slate-800">•</span>
+            <span>
+              Powered by{" "}
+              <span className="font-semibold text-indigo-400">ChallengerPage</span>
+            </span>
           </div>
         </div>
       </footer>

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { ChallengerPageData } from "@/lib/types";
+import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import {
   Share2,
   Code,
@@ -22,6 +23,8 @@ interface ActionToolbarProps {
   onPagePublished?: (url: string) => void;
 }
 
+type GatedActionType = "publish" | "tailwind" | "markdown";
+
 export function ActionToolbar({
   pageData,
   isEditable,
@@ -33,13 +36,22 @@ export function ActionToolbar({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Lead capture gating state
+  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<GatedActionType | null>(null);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const isUserUnlocked = (): boolean => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("challenger_unlocked") === "true";
+  };
+
   // 1. Publish to Upstash Redis KV / API
-  const handlePublish = async () => {
+  const executePublish = async () => {
     setIsPublishing(true);
     try {
       const res = await fetch("/api/pages", {
@@ -65,17 +77,57 @@ export function ActionToolbar({
   };
 
   // 2. Copy Standalone Tailwind HTML to Clipboard
-  const handleCopyTailwind = async () => {
+  const executeCopyTailwind = async () => {
     const htmlContent = generateStandaloneTailwindHtml(pageData);
     await navigator.clipboard.writeText(htmlContent);
     showToast("Standalone Tailwind HTML copied to clipboard!");
   };
 
   // 3. Copy Structured Markdown to Clipboard
-  const handleCopyMarkdown = async () => {
+  const executeCopyMarkdown = async () => {
     const markdownContent = generatePageMarkdown(pageData);
     await navigator.clipboard.writeText(markdownContent);
     showToast("Structured Markdown copied to clipboard!");
+  };
+
+  // Gated triggers: check unlock status before running
+  const handlePublishClick = () => {
+    if (isUserUnlocked()) {
+      executePublish();
+    } else {
+      setPendingAction("publish");
+      setIsLeadModalOpen(true);
+    }
+  };
+
+  const handleTailwindClick = () => {
+    if (isUserUnlocked()) {
+      executeCopyTailwind();
+    } else {
+      setPendingAction("tailwind");
+      setIsLeadModalOpen(true);
+    }
+  };
+
+  const handleMarkdownClick = () => {
+    if (isUserUnlocked()) {
+      executeCopyMarkdown();
+    } else {
+      setPendingAction("markdown");
+      setIsLeadModalOpen(true);
+    }
+  };
+
+  // Automatically execute the queued action once user unlocks in the modal
+  const handleLeadSuccess = () => {
+    if (pendingAction === "publish") {
+      executePublish();
+    } else if (pendingAction === "tailwind") {
+      executeCopyTailwind();
+    } else if (pendingAction === "markdown") {
+      executeCopyMarkdown();
+    }
+    setPendingAction(null);
   };
 
   const copyModalLink = async () => {
@@ -123,7 +175,7 @@ export function ActionToolbar({
           {/* Copy Markdown */}
           <button
             type="button"
-            onClick={handleCopyMarkdown}
+            onClick={handleMarkdownClick}
             className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 font-semibold text-slate-300 hover:bg-slate-750 hover:text-white transition-colors"
             title="Export page copy as structured Markdown"
           >
@@ -135,7 +187,7 @@ export function ActionToolbar({
           {/* Copy Tailwind HTML */}
           <button
             type="button"
-            onClick={handleCopyTailwind}
+            onClick={handleTailwindClick}
             className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1.5 font-semibold text-slate-300 hover:bg-slate-750 hover:text-white transition-colors"
             title="Export standalone HTML with Tailwind CSS"
           >
@@ -148,7 +200,7 @@ export function ActionToolbar({
           <button
             type="button"
             disabled={isPublishing}
-            onClick={handlePublish}
+            onClick={handlePublishClick}
             className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-500 px-3.5 py-1.5 font-bold text-white shadow-md shadow-indigo-600/30 hover:from-indigo-500 hover:to-indigo-400 transition-all disabled:opacity-50"
           >
             {isPublishing ? (
@@ -159,7 +211,7 @@ export function ActionToolbar({
             ) : (
               <>
                 <Share2 className="h-3.5 w-3.5 text-amber-300" />
-                <span>Publish & Share</span>
+                <span>Publish &amp; Share</span>
               </>
             )}
           </button>
@@ -246,6 +298,24 @@ export function ActionToolbar({
           </div>
         </div>
       )}
+
+      {/* Lead Capture Modal Gating Exports */}
+      <LeadCaptureModal
+        isOpen={isLeadModalOpen}
+        onClose={() => {
+          setIsLeadModalOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={handleLeadSuccess}
+        pageId={pageData.id}
+        sourceAction={
+          pendingAction === "publish"
+            ? "share_link"
+            : pendingAction === "markdown"
+            ? "copy_markdown"
+            : "copy_html"
+        }
+      />
     </div>
   );
 }
@@ -400,7 +470,11 @@ export function generateStandaloneTailwindHtml(page: ChallengerPageData): string
   </section>
 
   <footer class="border-t border-slate-800 py-8 text-center text-xs text-slate-500">
-    Powered by ChallengerPage
+    <p>Powered by ChallengerPage</p>
+    <div class="mt-2 flex items-center justify-center gap-4">
+      <a href="/terms" class="hover:text-slate-400">Terms of Service</a>
+      <a href="/privacy" class="hover:text-slate-400">Privacy Policy</a>
+    </div>
   </footer>
 </body>
 </html>`;
@@ -470,7 +544,7 @@ ${page.finalCta.subheadline}
 
 👉 **[${page.finalCta.buttonText}]**
 
-*Powered by ChallengerPage*
+*Powered by ChallengerPage • [Terms](/terms) • [Privacy](/privacy)*
 `;
 }
 
