@@ -12,18 +12,77 @@ import {
   ShieldCheck,
   Sparkles,
   Quote,
+  Pencil,
 } from "lucide-react";
 
 interface CounterLandingPageProps {
   data: ChallengerPageData;
   isPreview?: boolean;
+  isEditable?: boolean;
+  onUpdate?: (updated: ChallengerPageData) => void;
 }
 
-export function CounterLandingPage({ data }: CounterLandingPageProps) {
+export function CounterLandingPage({
+  data,
+  isEditable = false,
+  onUpdate,
+}: CounterLandingPageProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex((prev) => (prev === index ? null : index));
+  };
+
+  const updateField = (updater: (prev: ChallengerPageData) => ChallengerPageData) => {
+    if (!onUpdate) return;
+    const updated = updater(data);
+    onUpdate(updated);
+  };
+
+  const handleHeadlineBlur = (e: React.FocusEvent<HTMLHeadingElement>) => {
+    const text = e.currentTarget.textContent?.trim();
+    if (text && text !== data.hero.headline) {
+      updateField((prev) => ({
+        ...prev,
+        hero: { ...prev.hero, headline: text },
+      }));
+    }
+  };
+
+  const handleSubheadlineBlur = (e: React.FocusEvent<HTMLParagraphElement>) => {
+    const text = e.currentTarget.textContent?.trim();
+    if (text && text !== data.hero.subheadline) {
+      updateField((prev) => ({
+        ...prev,
+        hero: { ...prev.hero, subheadline: text },
+      }));
+    }
+  };
+
+  const handleCounterPitchBlur = (
+    index: number,
+    e: React.FocusEvent<HTMLParagraphElement>
+  ) => {
+    const text = e.currentTarget.textContent?.trim();
+    if (text && text !== data.battlecards[index]?.counterPitch) {
+      updateField((prev) => {
+        const nextCards = [...prev.battlecards];
+        if (nextCards[index]) {
+          nextCards[index] = { ...nextCards[index], counterPitch: text };
+        }
+        return { ...prev, battlecards: nextCards };
+      });
+    }
+  };
+
+  const handleFinalCtaBlur = (e: React.FocusEvent<HTMLHeadingElement>) => {
+    const text = e.currentTarget.textContent?.trim();
+    if (text && text !== data.finalCta.headline) {
+      updateField((prev) => ({
+        ...prev,
+        finalCta: { ...prev.finalCta, headline: text },
+      }));
+    }
   };
 
   return (
@@ -58,15 +117,47 @@ export function CounterLandingPage({ data }: CounterLandingPageProps) {
             <span>{data.hero.badge}</span>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight md:leading-[1.15]">
-            {data.hero.headline}
-          </h1>
+          {/* Headline (Inline Editable) */}
+          <div className="relative group/edit">
+            <h1
+              contentEditable={isEditable}
+              suppressContentEditableWarning
+              onBlur={handleHeadlineBlur}
+              className={`text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight md:leading-[1.15] ${
+                isEditable
+                  ? "outline-none border border-dashed border-indigo-400/40 hover:border-indigo-400 focus:border-indigo-400 focus:bg-indigo-950/30 rounded-xl px-2 py-1 transition-all cursor-text"
+                  : ""
+              }`}
+            >
+              {data.hero.headline}
+            </h1>
+            {isEditable && (
+              <span className="pointer-events-none absolute -top-3 right-4 hidden group-hover/edit:flex items-center gap-1 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                <Pencil className="h-2.5 w-2.5" /> Edit
+              </span>
+            )}
+          </div>
 
-          {/* Subheadline */}
-          <p className="mt-6 text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-            {data.hero.subheadline}
-          </p>
+          {/* Subheadline (Inline Editable) */}
+          <div className="relative group/edit mt-6">
+            <p
+              contentEditable={isEditable}
+              suppressContentEditableWarning
+              onBlur={handleSubheadlineBlur}
+              className={`text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed ${
+                isEditable
+                  ? "outline-none border border-dashed border-indigo-400/40 hover:border-indigo-400 focus:border-indigo-400 focus:bg-indigo-950/30 rounded-xl px-2 py-1 transition-all cursor-text"
+                  : ""
+              }`}
+            >
+              {data.hero.subheadline}
+            </p>
+            {isEditable && (
+              <span className="pointer-events-none absolute -top-3 right-4 hidden group-hover/edit:flex items-center gap-1 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                <Pencil className="h-2.5 w-2.5" /> Edit
+              </span>
+            )}
+          </div>
 
           {/* CTA Buttons */}
           <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -163,13 +254,29 @@ export function CounterLandingPage({ data }: CounterLandingPageProps) {
                   </div>
                 </div>
 
-                {/* Challenger Counter-Pitch (Positive Resolution) */}
-                <div className="mt-5 flex-1 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 uppercase tracking-wide mb-2">
-                    <Check className="h-4 w-4 stroke-[3]" />
-                    <span>How {data.challengerName} Solves This</span>
+                {/* Challenger Counter-Pitch (Positive Resolution - Inline Editable) */}
+                <div className="mt-5 flex-1 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4 relative group/cardedit">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 uppercase tracking-wide">
+                      <Check className="h-4 w-4 stroke-[3]" />
+                      <span>How {data.challengerName} Solves This</span>
+                    </div>
+                    {isEditable && (
+                      <span className="pointer-events-none hidden group-hover/cardedit:flex items-center gap-1 text-[10px] text-indigo-300 font-bold">
+                        <Pencil className="h-2.5 w-2.5" /> Edit
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed">
+                  <p
+                    contentEditable={isEditable}
+                    suppressContentEditableWarning
+                    onBlur={(e) => handleCounterPitchBlur(index, e)}
+                    className={`text-xs sm:text-sm text-slate-200 font-medium leading-relaxed ${
+                      isEditable
+                        ? "outline-none border border-dashed border-emerald-400/40 hover:border-emerald-400 focus:border-emerald-400 focus:bg-emerald-950/40 rounded-lg p-1.5 transition-all cursor-text"
+                        : ""
+                    }`}
+                  >
                     {card.counterPitch}
                   </p>
                 </div>
@@ -288,13 +395,30 @@ export function CounterLandingPage({ data }: CounterLandingPageProps) {
         </div>
       </section>
 
-      {/* 6. Final High-Conversion CTA Banner */}
+      {/* 6. Final High-Conversion CTA Banner (Headline Inline Editable) */}
       <section className="py-16 md:py-24 relative overflow-hidden">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="relative rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 border border-indigo-700/50 p-8 sm:p-12 md:p-16 text-center shadow-2xl shadow-indigo-950/80">
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-              {data.finalCta.headline}
-            </h2>
+            <div className="relative group/ctaedit">
+              <h2
+                contentEditable={isEditable}
+                suppressContentEditableWarning
+                onBlur={handleFinalCtaBlur}
+                className={`text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight ${
+                  isEditable
+                    ? "outline-none border border-dashed border-indigo-400/40 hover:border-indigo-400 focus:border-indigo-400 focus:bg-indigo-950/30 rounded-xl px-2 py-1 transition-all cursor-text"
+                    : ""
+                }`}
+              >
+                {data.finalCta.headline}
+              </h2>
+              {isEditable && (
+                <span className="pointer-events-none absolute -top-3 right-4 hidden group-hover/ctaedit:flex items-center gap-1 rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                  <Pencil className="h-2.5 w-2.5" /> Edit
+                </span>
+              )}
+            </div>
+
             <p className="mt-4 text-base sm:text-lg text-indigo-200 max-w-2xl mx-auto">
               {data.finalCta.subheadline}
             </p>

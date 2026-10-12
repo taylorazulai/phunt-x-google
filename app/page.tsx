@@ -5,6 +5,7 @@ import { MOCK_PRESETS, getPresetReviews } from "@/lib/mock-data";
 import { CompetitorReview, ChallengerPageData } from "@/lib/types";
 import { CounterLandingPage } from "@/components/CounterLandingPage";
 import { MakerForm } from "@/components/MakerForm";
+import { ActionToolbar } from "@/components/ActionToolbar";
 import {
   Sparkles,
   Monitor,
@@ -18,7 +19,7 @@ import {
   Cpu,
 } from "lucide-react";
 
-export default function Stage3StudioPage() {
+export default function Stage4StudioPage() {
   const [selectedPresetId, setSelectedPresetId] = useState<string>(MOCK_PRESETS[0].id);
   const activePreset =
     MOCK_PRESETS.find((p) => p.id === selectedPresetId) || MOCK_PRESETS[0];
@@ -38,14 +39,15 @@ export default function Stage3StudioPage() {
   );
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
-  // Stage 3 Generation State
+  // Generation State
   const [generatedPageData, setGeneratedPageData] = useState<ChallengerPageData | null>(null);
   const [generationModel, setGenerationModel] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStep, setGenerationStep] = useState<number>(1);
   const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // View & responsive emulation state
+  // Stage 4 Inline Editing & Viewport State
+  const [isEditable, setIsEditable] = useState<boolean>(false);
   const [previewViewport, setPreviewViewport] = useState<"full" | "tablet" | "mobile">("full");
   const [activeLayoutView, setActiveLayoutView] = useState<"split" | "form" | "preview">("split");
 
@@ -61,7 +63,6 @@ export default function Stage3StudioPage() {
     if (presetId) {
       setSelectedPresetId(presetId);
     }
-    // Reset previously generated AI page when reviews or competitor changes
     setGeneratedPageData(null);
     setGenerationModel(null);
 
@@ -102,14 +103,13 @@ export default function Stage3StudioPage() {
     }
   };
 
-  // Stage 3: Generation Pipeline Trigger
+  // Generation Pipeline Trigger
   const handleGenerate = async () => {
     if (isGenerating) return;
 
     setIsGenerating(true);
     setGenerationStep(1);
 
-    // Animate through progressive generation steps
     let currentStep = 1;
     stepIntervalRef.current = setInterval(() => {
       currentStep += 1;
@@ -143,7 +143,6 @@ export default function Stage3StudioPage() {
           setFallbackNotice(null);
         }
 
-        // Auto switch to split view so the newly generated counter page is immediately visible
         setActiveLayoutView("split");
       } else {
         setFallbackNotice(result.error || "Failed to generate counter-page");
@@ -171,6 +170,10 @@ export default function Stage3StudioPage() {
     },
   };
 
+  const handlePageUpdate = (updated: ChallengerPageData) => {
+    setGeneratedPageData(updated);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100">
       {/* Top Floating Control Header */}
@@ -187,11 +190,11 @@ export default function Stage3StudioPage() {
                   ChallengerPage
                 </span>
                 <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-400 border border-emerald-500/20">
-                  STAGE 3 ACTIVE
+                  STAGE 4 ACTIVE
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Gemini 3.8 / 3.6 Flash Objection Synthesis Engine
+                KV Persistence, Maker Studio Controls & Code Exports
               </p>
             </div>
           </div>
@@ -323,7 +326,7 @@ export default function Stage3StudioPage() {
             <Sparkles className="h-3 w-3 text-indigo-400" />
             <span>
               {generatedPageData
-                ? "Live AI copy generated & objection-matched"
+                ? "Live AI copy generated • Click elements to edit or publish below"
                 : "Awaiting generation trigger"}
             </span>
           </div>
@@ -356,8 +359,15 @@ export default function Stage3StudioPage() {
                 />
               </div>
 
-              {/* Right Column: Live Landing Page Preview (7 cols on lg) */}
+              {/* Right Column: Live Landing Page Preview with ActionToolbar (7 cols on lg) */}
               <div className="lg:col-span-7 space-y-4">
+                {/* Action Toolbar */}
+                <ActionToolbar
+                  pageData={displayPageData}
+                  isEditable={isEditable}
+                  onToggleEditable={() => setIsEditable((prev) => !prev)}
+                />
+
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
                     <Layers className="h-4 w-4 text-indigo-400" />
@@ -366,6 +376,11 @@ export default function Stage3StudioPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isEditable && (
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-300 border border-amber-500/20">
+                        Editing Active
+                      </span>
+                    )}
                     {generatedPageData ? (
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
                         AI Copy Active
@@ -387,7 +402,12 @@ export default function Stage3StudioPage() {
                       : "w-full"
                   }`}
                 >
-                  <CounterLandingPage data={displayPageData} isPreview />
+                  <CounterLandingPage
+                    data={displayPageData}
+                    isPreview
+                    isEditable={isEditable}
+                    onUpdate={handlePageUpdate}
+                  />
                 </div>
               </div>
             </div>
@@ -412,8 +432,15 @@ export default function Stage3StudioPage() {
               />
             </div>
           ) : (
-            /* Preview Only View */
-            <div className="flex justify-center py-4">
+            /* Preview Only View with Action Toolbar */
+            <div className="flex flex-col items-center gap-4 py-4 max-w-5xl mx-auto">
+              <div className="w-full">
+                <ActionToolbar
+                  pageData={displayPageData}
+                  isEditable={isEditable}
+                  onToggleEditable={() => setIsEditable((prev) => !prev)}
+                />
+              </div>
               <div
                 className={`w-full transition-all duration-300 ${
                   previewViewport === "mobile"
@@ -423,7 +450,12 @@ export default function Stage3StudioPage() {
                     : "max-w-none"
                 }`}
               >
-                <CounterLandingPage data={displayPageData} isPreview />
+                <CounterLandingPage
+                  data={displayPageData}
+                  isPreview
+                  isEditable={isEditable}
+                  onUpdate={handlePageUpdate}
+                />
               </div>
             </div>
           )}
