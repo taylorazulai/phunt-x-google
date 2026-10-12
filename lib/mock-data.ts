@@ -297,6 +297,120 @@ export const MOCK_PRESET_COWORKING: ChallengerPageData = {
   },
 };
 
+export const MOCK_REVIEWS_GYM = [
+  {
+    id: "rev-gym-01",
+    author: "Marcus Vance",
+    rating: 1,
+    text: "Tried to cancel for 3 months after moving. They insisted I send a certified handwritten letter to an address in Texas or pay a $180 early termination fee. Charged me twice more anyway!",
+    publishDate: "2024-03-12T14:32:00Z",
+  },
+  {
+    id: "rev-gym-02",
+    author: "Elena Rostova",
+    rating: 1,
+    text: "Half the cable machines have had 'Out of Order' signs taped to them since November. Locker room showers are moldy and freezing cold. Where does our $75/mo actually go?",
+    publishDate: "2024-04-05T09:15:00Z",
+  },
+  {
+    id: "rev-gym-03",
+    author: "Derek Chen",
+    rating: 2,
+    text: "At 5:30 PM you literally cannot walk. People hovering over your shoulder waiting for barbells. Staff just sits behind the front desk scrolling TikTok while people drop weights dangerously.",
+    publishDate: "2024-04-18T18:45:00Z",
+  },
+  {
+    id: "rev-gym-04",
+    author: "Sarah Jenkins",
+    rating: 1,
+    text: "Sneaky annual 'maintenance fee' of $69 debited without any prior notification. Front desk said it was buried in page 9 of the contract.",
+    publishDate: "2024-05-02T11:20:00Z",
+  },
+  {
+    id: "rev-gym-05",
+    author: "Tom Fitzpatrick",
+    rating: 2,
+    text: "Machines are filthy and disinfectant spray bottles are always empty. If you want any guidance on form, they try to corner you into a $120/hour training contract.",
+    publishDate: "2024-05-20T16:10:00Z",
+  },
+];
+
+export const MOCK_REVIEWS_CRM = [
+  {
+    id: "rev-crm-01",
+    author: "David Miller, VP of Sales",
+    rating: 1,
+    text: "We missed their 60-day written cancellation window by 48 hours and our rep automatically invoiced us $36,000 for another year of licenses we don't even use. Support refused to talk to us.",
+    publishDate: "2024-02-14T10:00:00Z",
+  },
+  {
+    id: "rev-crm-02",
+    author: "Rachel Green, RevOps Lead",
+    rating: 1,
+    text: "It took 4 months and a $25k third-party agency just to set up custom lead routing. Our sales reps hated it so much they went back to tracking deals in private Google Sheets.",
+    publishDate: "2024-03-22T13:40:00Z",
+  },
+  {
+    id: "rev-crm-03",
+    author: "Kevin Patel, Founder",
+    rating: 2,
+    text: "Every useful feature (email sequences, call recording, pipeline forecasting) is locked behind their 'Enterprise Plus' tier. Our bill jumped from $2k/mo to $6k/mo without notice.",
+    publishDate: "2024-04-11T15:30:00Z",
+  },
+  {
+    id: "rev-crm-04",
+    author: "Amanda Ortiz",
+    rating: 1,
+    text: "Software is ridiculously slow. Clicking on an account takes 4 seconds to load. We spend more time fighting the CRM database than selling to prospects.",
+    publishDate: "2024-04-29T12:15:00Z",
+  },
+  {
+    id: "rev-crm-05",
+    author: "Brian Sterling, CRO",
+    rating: 2,
+    text: "Their support SLA is terrible. Filed a critical ticket on a broken webhook integration and received a generic auto-reply 4 days later. Completely unacceptable for enterprise pricing.",
+    publishDate: "2024-05-15T09:45:00Z",
+  },
+];
+
+export const MOCK_REVIEWS_COWORKING = [
+  {
+    id: "rev-cw-01",
+    author: "Sophie Lin, Product Designer",
+    rating: 1,
+    text: "Their advertised 'high-speed internet' tops out at 12 Mbps down and constantly disconnected during client Zoom presentations. When I complained, they tried to upsell me an $80/mo dedicated VLAN!",
+    publishDate: "2024-01-20T11:20:00Z",
+  },
+  {
+    id: "rev-cw-02",
+    author: "Carlos Mendez, Tech Founder",
+    rating: 1,
+    text: "They charge $4.50 per Nespresso pod, $45/hour for basic conference rooms, and 25 cents per black & white print. The end-of-month invoice was always $300 higher than expected.",
+    publishDate: "2024-03-08T16:15:00Z",
+  },
+  {
+    id: "rev-cw-03",
+    author: "Hannah Abbott",
+    rating: 1,
+    text: "Locked our 4-person startup into a 24-month lease. When our company downsized, they sent debt collectors instead of working with us on a flexible room swap.",
+    publishDate: "2024-04-02T14:50:00Z",
+  },
+  {
+    id: "rev-cw-04",
+    author: "James Thorne",
+    rating: 2,
+    text: "Phone booths are impossible to grab and they lock the doors at 6 PM sharp on weekdays with no weekend access unless you pay an executive tier fee.",
+    publishDate: "2024-04-25T17:10:00Z",
+  },
+  {
+    id: "rev-cw-05",
+    author: "Maya Lindqvist",
+    rating: 2,
+    text: "HVAC broke in the middle of summer and the management took 2 weeks to send a technician. Everyone was working in 85-degree rooms with tiny desk fans.",
+    publishDate: "2024-05-10T10:30:00Z",
+  },
+];
+
 export const MOCK_PRESETS: MockPreset[] = [
   {
     id: "preset-gym-pulsefit",
@@ -304,6 +418,7 @@ export const MOCK_PRESETS: MockPreset[] = [
     description: "PulseFit Studio vs MegaGym Global (cancellation traps, broken machines, overcrowding)",
     category: "Fitness & Wellness",
     data: MOCK_PRESET_GYM,
+    reviews: MOCK_REVIEWS_GYM,
   },
   {
     id: "preset-crm-echodesk",
@@ -311,6 +426,7 @@ export const MOCK_PRESETS: MockPreset[] = [
     description: "EchoDesk CRM vs TitanCRM (annual lock-in, $60 seat taxes, complicated setup)",
     category: "SaaS & Software",
     data: MOCK_PRESET_CRM,
+    reviews: MOCK_REVIEWS_CRM,
   },
   {
     id: "preset-coworking-hivework",
@@ -318,5 +434,11 @@ export const MOCK_PRESETS: MockPreset[] = [
     description: "HiveWork Commons vs Apex Suites (throttled Wi-Fi, nickel-and-diming, rigid leases)",
     category: "Real Estate & Co-Working",
     data: MOCK_PRESET_COWORKING,
+    reviews: MOCK_REVIEWS_COWORKING,
   },
 ];
+
+export function getPresetReviews(presetId: string) {
+  const preset = MOCK_PRESETS.find((p) => p.id === presetId);
+  return preset?.reviews || MOCK_REVIEWS_GYM;
+}

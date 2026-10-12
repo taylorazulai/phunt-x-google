@@ -65,10 +65,25 @@ export interface ChallengerPageData {
   finalCta: ChallengerPageFinalCta;
 }
 
+export interface ScrapeRequest {
+  competitorQuery?: string;
+  presetId?: string;
+  manualReviews?: string[];
+}
+
+export interface ScrapeResponse {
+  success: boolean;
+  reviews: CompetitorReview[];
+  source: "outscraper" | "preset" | "manual";
+  competitorName: string;
+  fallbackNotice?: string;
+}
+
 export interface MockPreset {
   id: string;
   name: string;
   description: string;
   category: string;
   data: ChallengerPageData;
+  reviews?: CompetitorReview[];
 }
