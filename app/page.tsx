@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { MOCK_PRESETS, getPresetReviews } from "@/lib/mock-data";
 import { CompetitorReview, ChallengerPageData } from "@/lib/types";
 import { CounterLandingPage } from "@/components/CounterLandingPage";
@@ -14,9 +14,11 @@ import {
   SlidersHorizontal,
   Columns,
   Layers,
+  RotateCw,
+  Cpu,
 } from "lucide-react";
 
-export default function Stage2StudioPage() {
+export default function Stage3StudioPage() {
   const [selectedPresetId, setSelectedPresetId] = useState<string>(MOCK_PRESETS[0].id);
   const activePreset =
     MOCK_PRESETS.find((p) => p.id === selectedPresetId) || MOCK_PRESETS[0];
@@ -36,6 +38,13 @@ export default function Stage2StudioPage() {
   );
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
+  // Stage 3 Generation State
+  const [generatedPageData, setGeneratedPageData] = useState<ChallengerPageData | null>(null);
+  const [generationModel, setGenerationModel] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationStep, setGenerationStep] = useState<number>(1);
+  const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // View & responsive emulation state
   const [previewViewport, setPreviewViewport] = useState<"full" | "tablet" | "mobile">("full");
   const [activeLayoutView, setActiveLayoutView] = useState<"split" | "form" | "preview">("split");
@@ -52,6 +61,10 @@ export default function Stage2StudioPage() {
     if (presetId) {
       setSelectedPresetId(presetId);
     }
+    // Reset previously generated AI page when reviews or competitor changes
+    setGeneratedPageData(null);
+    setGenerationModel(null);
+
     if (source === "preset" && !presetId) {
       setFallbackNotice(
         "Using pre-scraped verified reviews. Provide an Outscraper API key in .env for live searches."
@@ -70,6 +83,8 @@ export default function Stage2StudioPage() {
     setCompetitorName(preset.data.competitorName);
     setChallengerName(preset.data.challengerName);
     setReviews(getPresetReviews(preset.id));
+    setGeneratedPageData(null);
+    setGenerationModel(null);
     setFallbackNotice(null);
 
     if (preset.id === "preset-gym-pulsefit") {
@@ -87,15 +102,72 @@ export default function Stage2StudioPage() {
     }
   };
 
-  // Compute live preview data reflecting current maker inputs
-  const livePreviewData: ChallengerPageData = {
+  // Stage 3: Generation Pipeline Trigger
+  const handleGenerate = async () => {
+    if (isGenerating) return;
+
+    setIsGenerating(true);
+    setGenerationStep(1);
+
+    // Animate through progressive generation steps
+    let currentStep = 1;
+    stepIntervalRef.current = setInterval(() => {
+      currentStep += 1;
+      if (currentStep <= 3) {
+        setGenerationStep(currentStep);
+      }
+    }, 1100);
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          competitorName: competitorName.trim(),
+          challengerName: challengerName.trim(),
+          challengerPitch: challengerPitch.trim(),
+          reviews,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
+
+      if (result.success && result.data) {
+        setGeneratedPageData(result.data);
+        setGenerationModel(result.modelUsed || "Gemini 3.8 Flash");
+        if (result.notice) {
+          setFallbackNotice(result.notice);
+        } else {
+          setFallbackNotice(null);
+        }
+
+        // Auto switch to split view so the newly generated counter page is immediately visible
+        setActiveLayoutView("split");
+      } else {
+        setFallbackNotice(result.error || "Failed to generate counter-page");
+      }
+    } catch (err: unknown) {
+      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
+      setFallbackNotice(
+        err instanceof Error ? err.message : "Generation network error occurred"
+      );
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep(1);
+    }
+  };
+
+  // Active display data: Prioritizes AI generated data, falls back to live reactive preset
+  const displayPageData: ChallengerPageData = generatedPageData || {
     ...activePreset.data,
     competitorName: competitorName || activePreset.data.competitorName,
     challengerName: challengerName || activePreset.data.challengerName,
     hero: {
       ...activePreset.data.hero,
       badge: `Tired of ${competitorName || activePreset.data.competitorName}'s Hidden Clauses?`,
-      headline: `${activePreset.data.hero.headline}`,
+      headline: activePreset.data.hero.headline,
     },
   };
 
@@ -106,7 +178,7 @@ export default function Stage2StudioPage() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           {/* Brand Logo & Stage Status */}
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 font-bold text-white shadow-md shadow-indigo-500/20">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-rose-500 to-indigo-700 font-bold text-white shadow-md shadow-indigo-500/20">
               CP
             </div>
             <div>
@@ -115,13 +187,41 @@ export default function Stage2StudioPage() {
                   ChallengerPage
                 </span>
                 <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-400 border border-emerald-500/20">
-                  STAGE 2 READY
+                  STAGE 3 ACTIVE
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Maker Intake Studio & Ingestion Engine
+                Gemini 3.8 / 3.6 Flash Objection Synthesis Engine
               </p>
             </div>
+          </div>
+
+          {/* Model Badge & Quick Regenerate CTA */}
+          <div className="flex items-center gap-2">
+            {generationModel ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-950/60 px-3 py-1 text-xs text-indigo-300">
+                <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+                <span className="font-semibold">{generationModel}</span>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-400">
+                <Cpu className="h-3.5 w-3.5 text-slate-400" />
+                <span>Engine: Gemini 3.8 Flash (Fallback: 3.6 Flash)</span>
+              </div>
+            )}
+
+            {generatedPageData && (
+              <button
+                type="button"
+                disabled={isGenerating}
+                onClick={handleGenerate}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-850 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors disabled:opacity-50"
+                title="Regenerate copy with new variations"
+              >
+                <RotateCw className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+                <span>Regenerate Copy</span>
+              </button>
+            )}
           </div>
 
           {/* Layout Mode Switcher (Split / Form / Preview) */}
@@ -164,8 +264,8 @@ export default function Stage2StudioPage() {
             </button>
           </div>
 
-          {/* Viewport Width Emulation Controls (when viewing preview) */}
-          <div className="hidden lg:flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/90 p-1">
+          {/* Viewport Width Emulation Controls */}
+          <div className="hidden xl:flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/90 p-1">
             <button
               type="button"
               onClick={() => setPreviewViewport("full")}
@@ -221,7 +321,11 @@ export default function Stage2StudioPage() {
           </div>
           <div className="hidden md:flex items-center gap-1.5 text-slate-500">
             <Sparkles className="h-3 w-3 text-indigo-400" />
-            <span>Ready to generate counter-landing page copy</span>
+            <span>
+              {generatedPageData
+                ? "Live AI copy generated & objection-matched"
+                : "Awaiting generation trigger"}
+            </span>
           </div>
         </div>
       </header>
@@ -246,7 +350,9 @@ export default function Stage2StudioPage() {
                   onReviewsLoaded={handleReviewsLoaded}
                   onSelectPreset={handleSelectPreset}
                   fallbackNotice={fallbackNotice}
-                  onProceedToGenerate={() => setActiveLayoutView("preview")}
+                  onGenerate={handleGenerate}
+                  isGenerating={isGenerating}
+                  generationStep={generationStep}
                 />
               </div>
 
@@ -259,9 +365,17 @@ export default function Stage2StudioPage() {
                       Live Counter-Landing Page Preview
                     </span>
                   </div>
-                  <span className="rounded bg-indigo-500/10 px-2 py-0.5 text-[11px] font-semibold text-indigo-400 border border-indigo-500/20">
-                    Real-time Reactive
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {generatedPageData ? (
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
+                        AI Copy Active
+                      </span>
+                    ) : (
+                      <span className="rounded bg-indigo-500/10 px-2 py-0.5 text-[11px] font-semibold text-indigo-400 border border-indigo-500/20">
+                        Preview Draft
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div
@@ -273,7 +387,7 @@ export default function Stage2StudioPage() {
                       : "w-full"
                   }`}
                 >
-                  <CounterLandingPage data={livePreviewData} isPreview />
+                  <CounterLandingPage data={displayPageData} isPreview />
                 </div>
               </div>
             </div>
@@ -292,7 +406,9 @@ export default function Stage2StudioPage() {
                 onReviewsLoaded={handleReviewsLoaded}
                 onSelectPreset={handleSelectPreset}
                 fallbackNotice={fallbackNotice}
-                onProceedToGenerate={() => setActiveLayoutView("preview")}
+                onGenerate={handleGenerate}
+                isGenerating={isGenerating}
+                generationStep={generationStep}
               />
             </div>
           ) : (
@@ -307,7 +423,7 @@ export default function Stage2StudioPage() {
                     : "max-w-none"
                 }`}
               >
-                <CounterLandingPage data={livePreviewData} isPreview />
+                <CounterLandingPage data={displayPageData} isPreview />
               </div>
             </div>
           )}

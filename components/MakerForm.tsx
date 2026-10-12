@@ -16,6 +16,7 @@ import {
   ArrowRight,
   ShieldAlert,
   Zap,
+  Cpu,
 } from "lucide-react";
 
 interface MakerFormProps {
@@ -35,7 +36,9 @@ interface MakerFormProps {
   ) => void;
   onSelectPreset: (presetId: string) => void;
   fallbackNotice?: string | null;
-  onProceedToGenerate?: () => void;
+  onGenerate?: () => void;
+  isGenerating?: boolean;
+  generationStep?: number;
 }
 
 export function MakerForm({
@@ -50,7 +53,9 @@ export function MakerForm({
   onReviewsLoaded,
   onSelectPreset,
   fallbackNotice,
-  onProceedToGenerate,
+  onGenerate,
+  isGenerating = false,
+  generationStep = 1,
 }: MakerFormProps) {
   const [activeTab, setActiveTab] = useState<"scrape" | "manual" | "presets">(
     activePresetId ? "presets" : "scrape"
@@ -151,6 +156,12 @@ export function MakerForm({
     onReviewsLoaded(updated, competitorName, "manual");
   };
 
+  const GENERATION_STEPS = [
+    "Reading customer complaints with Gemini 3.8 Flash...",
+    "Isolating key pain points & authentic quotes...",
+    "Drafting high-conversion counter-battlecards & FAQ...",
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Fallback Notice Banner */}
@@ -158,7 +169,7 @@ export function MakerForm({
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs sm:text-sm text-amber-200 shadow-sm animate-in fade-in duration-200">
           <AlertCircle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold text-amber-300">Demo Resilience Active: </span>
+            <span className="font-semibold text-amber-300">Notice: </span>
             <span>{fallbackNotice}</span>
           </div>
         </div>
@@ -186,12 +197,13 @@ export function MakerForm({
         <div className="mt-5 grid grid-cols-3 gap-1 rounded-xl bg-slate-950 p-1 border border-slate-800">
           <button
             type="button"
+            disabled={isGenerating}
             onClick={() => setActiveTab("scrape")}
             className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
               activeTab === "scrape"
                 ? "bg-indigo-600 text-white shadow"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            } disabled:opacity-50`}
           >
             <MapPin className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Google Maps</span>
@@ -199,24 +211,26 @@ export function MakerForm({
           </button>
           <button
             type="button"
+            disabled={isGenerating}
             onClick={() => setActiveTab("manual")}
             className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
               activeTab === "manual"
                 ? "bg-indigo-600 text-white shadow"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            } disabled:opacity-50`}
           >
             <ClipboardList className="h-3.5 w-3.5" />
             <span>Manual Paste</span>
           </button>
           <button
             type="button"
+            disabled={isGenerating}
             onClick={() => setActiveTab("presets")}
             className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
               activeTab === "presets"
                 ? "bg-indigo-600 text-white shadow"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            } disabled:opacity-50`}
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
             <span className="hidden sm:inline">1-Click Presets</span>
@@ -234,10 +248,11 @@ export function MakerForm({
               <div className="relative">
                 <input
                   type="text"
+                  disabled={isGenerating}
                   value={scrapeQuery}
                   onChange={(e) => setScrapeQuery(e.target.value)}
                   placeholder="e.g. Planet Fitness New York or maps.google.com/..."
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 pl-10 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 pl-10 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                 />
                 <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
               </div>
@@ -248,7 +263,7 @@ export function MakerForm({
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isGenerating}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow transition-all hover:bg-indigo-500 disabled:opacity-50"
             >
               {isLoading ? (
@@ -275,10 +290,11 @@ export function MakerForm({
               </label>
               <input
                 type="text"
+                disabled={isGenerating}
                 value={competitorName}
                 onChange={(e) => setCompetitorName(e.target.value)}
                 placeholder="e.g. Salesforce or Gold's Gym"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
               />
             </div>
 
@@ -288,17 +304,18 @@ export function MakerForm({
               </label>
               <textarea
                 rows={4}
+                disabled={isGenerating}
                 value={manualText}
                 onChange={(e) => setManualText(e.target.value)}
                 placeholder={`"Impossible to cancel my subscription without calling a retention rep."&#10;---&#10;"Charged me $120 extra for basic user seats we never used."`}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none font-mono"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none font-mono disabled:opacity-50"
               />
             </div>
 
             <button
               type="button"
               onClick={handleManualParse}
-              disabled={isLoading}
+              disabled={isLoading || isGenerating}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
             >
               {isLoading ? (
@@ -329,12 +346,13 @@ export function MakerForm({
                   <button
                     key={p.id}
                     type="button"
+                    disabled={isGenerating}
                     onClick={() => handlePresetClick(p.id)}
                     className={`flex items-start justify-between rounded-xl border p-3 text-left transition-all ${
                       isSelected
                         ? "border-indigo-500 bg-indigo-950/40 shadow-md ring-1 ring-indigo-500"
                         : "border-slate-800 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-900"
-                    }`}
+                    } disabled:opacity-50`}
                   >
                     <div>
                       <div className="flex items-center gap-2">
@@ -387,7 +405,7 @@ export function MakerForm({
             Ingest reviews above or click a demo preset to inspect customer complaints.
           </div>
         ) : (
-          <div className="mt-4 space-y-3 max-h-[320px] overflow-y-auto pr-1">
+          <div className="mt-4 space-y-3 max-h-[280px] overflow-y-auto pr-1">
             {reviews.map((rev) => (
               <div
                 key={rev.id}
@@ -413,8 +431,9 @@ export function MakerForm({
                   </div>
                   <button
                     type="button"
+                    disabled={isGenerating}
                     onClick={() => handleRemoveReview(rev.id)}
-                    className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition-opacity p-1"
+                    className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition-opacity p-1 disabled:hidden"
                     title="Remove review"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -429,7 +448,7 @@ export function MakerForm({
         )}
       </div>
 
-      {/* Step 2: Challenger Product Differentiators */}
+      {/* Step 2: Challenger Product Differentiators & Generation Trigger */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
         <div className="flex items-center gap-2 pb-4 border-b border-slate-800">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-bold text-white">
@@ -447,10 +466,11 @@ export function MakerForm({
             </label>
             <input
               type="text"
+              disabled={isGenerating}
               value={challengerName}
               onChange={(e) => setChallengerName(e.target.value)}
               placeholder="e.g. PulseFit Studio or EchoDesk"
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
             />
           </div>
 
@@ -460,25 +480,76 @@ export function MakerForm({
             </label>
             <textarea
               rows={3}
+              disabled={isGenerating}
               value={challengerPitch}
               onChange={(e) => setChallengerPitch(e.target.value)}
               placeholder="e.g. Transparent monthly billing with 1-click in-app cancellation, capped peak capacity, and 24/7 human coaches."
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
             />
             <p className="mt-1 text-[11px] text-slate-400">
-              The AI engine uses this to counter the specific 1-star complaints above.
+              Gemini Flash uses this to solve the exact complaints extracted above.
             </p>
           </div>
 
-          {onProceedToGenerate && (
+          {/* Progressive Generation Loading Tracker */}
+          {isGenerating && (
+            <div className="rounded-xl border border-indigo-500/30 bg-indigo-950/40 p-4 space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-indigo-300 font-semibold">
+                  <Cpu className="h-4 w-4 animate-spin text-indigo-400" />
+                  <span>AI Synthesis Engine Active</span>
+                </div>
+                <span className="text-[11px] text-indigo-400 font-bold">
+                  Step {Math.min(generationStep, 3)} of 3
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 via-rose-500 to-amber-400 transition-all duration-500 ease-out"
+                  style={{
+                    width:
+                      generationStep === 1
+                        ? "35%"
+                        : generationStep === 2
+                        ? "70%"
+                        : "95%",
+                  }}
+                />
+              </div>
+
+              <p className="text-xs text-slate-300 font-medium animate-pulse">
+                {GENERATION_STEPS[Math.min(generationStep - 1, 2)]}
+              </p>
+            </div>
+          )}
+
+          {/* Action Trigger Button */}
+          {onGenerate && (
             <button
               type="button"
-              onClick={onProceedToGenerate}
-              disabled={reviews.length === 0 || !challengerName || !challengerPitch}
-              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-50 transition-all"
+              onClick={onGenerate}
+              disabled={
+                isGenerating ||
+                reviews.length === 0 ||
+                !challengerName.trim() ||
+                !challengerPitch.trim()
+              }
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-rose-600 px-6 py-4 text-sm font-extrabold text-white shadow-xl shadow-indigo-600/30 hover:from-indigo-500 hover:to-rose-500 hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              <span>Ready for Stage 3 (AI Copy Engine)</span>
-              <ArrowRight className="h-4 w-4" />
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Synthesizing Counter-Page...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 text-amber-300" />
+                  <span>Generate Counter-Page with Gemini Flash</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           )}
         </div>
