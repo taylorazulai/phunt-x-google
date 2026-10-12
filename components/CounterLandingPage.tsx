@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ChallengerPageData } from "@/lib/types";
+import { ChallengerPageData, PageTheme } from "@/lib/types";
 import { DynamicIcon } from "@/components/DynamicIcon";
 import {
   Check,
@@ -23,12 +23,26 @@ interface CounterLandingPageProps {
   onUpdate?: (updated: ChallengerPageData) => void;
 }
 
+const DEFAULT_THEME: PageTheme = {
+  industry: "general",
+  palette: {
+    heroBg: "bg-slate-950",
+    accentBadge: "border-indigo-500/30 bg-indigo-950/60 text-indigo-300",
+    primaryCta: "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/30",
+    cardBg: "border-slate-800 bg-slate-900/90",
+    quoteBorder: "border-rose-950 bg-rose-950/20",
+    matrixWinner: "bg-indigo-950/20 border-l border-slate-800 text-indigo-300",
+  },
+  fontVibe: "modern-sans",
+};
+
 export function CounterLandingPage({
   data,
   isEditable = false,
   onUpdate,
 }: CounterLandingPageProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const theme = data.theme || DEFAULT_THEME;
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex((prev) => (prev === index ? null : index));
@@ -87,34 +101,33 @@ export function CounterLandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+    <div className={`min-h-screen ${theme.palette.heroBg} text-slate-100 selection:bg-indigo-500 selection:text-white`}>
       {/* 1. Top Announcement Banner */}
-      <div className="sticky top-0 z-40 bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 px-4 py-2.5 text-center text-xs md:text-sm font-semibold text-white shadow-md">
+      <div className="sticky top-0 z-40 bg-zinc-900/95 border-b border-zinc-800 px-4 py-2.5 text-center text-xs md:text-sm font-semibold text-zinc-200 shadow-sm backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2">
-          <Sparkles className="h-4 w-4 shrink-0 animate-pulse text-amber-200" />
+          <Sparkles className="h-4 w-4 shrink-0 text-amber-400" />
           <span>
             Switching from{" "}
-            <span className="underline decoration-white/70 font-bold">
+            <span className="underline decoration-zinc-500 font-bold text-white">
               {data.competitorName}
             </span>
             ? Claim our 14-day risk-free migration offer today.
           </span>
-          <ArrowRight className="hidden sm:inline-block h-3.5 w-3.5" />
+          <ArrowRight className="hidden sm:inline-block h-3.5 w-3.5 text-zinc-400" />
         </div>
       </div>
 
       {/* 2. Hero Section */}
       <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28">
-        {/* Ambient background glows */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-[480px] w-[640px] -translate-y-1/4 rounded-full bg-indigo-600/15 blur-[120px]" />
-          <div className="h-[360px] w-[500px] translate-x-1/3 translate-y-1/4 rounded-full bg-rose-600/10 blur-[120px]" />
+        {/* Subtle ambient background glow */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-40">
+          <div className="h-[480px] w-[640px] -translate-y-1/4 rounded-full bg-zinc-700/10 blur-[130px]" />
         </div>
 
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-950/60 px-4 py-1.5 text-xs sm:text-sm font-medium text-indigo-300 shadow-sm backdrop-blur-sm mb-6">
-            <span className="flex h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
+          {/* Eyebrow badge (Themed) */}
+          <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs sm:text-sm font-medium shadow-sm backdrop-blur-sm mb-6 ${theme.palette.accentBadge}`}>
+            <span className="flex h-2 w-2 rounded-full bg-current animate-ping" />
             <span>{data.hero.badge}</span>
           </div>
 
@@ -160,11 +173,11 @@ export function CounterLandingPage({
             )}
           </div>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons (Themed) */}
           <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               type="button"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 py-4 text-base font-bold text-white shadow-lg shadow-indigo-600/30 transition-all hover:bg-indigo-500 hover:shadow-indigo-500/40 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-7 py-4 text-base font-bold shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${theme.palette.primaryCta}`}
             >
               <span>{data.hero.ctaPrimary}</span>
               <ArrowRight className="h-4 w-4" />
@@ -198,7 +211,7 @@ export function CounterLandingPage({
       </section>
 
       {/* 3. Pain Points Battlecards (The Core Hook) */}
-      <section className="relative py-16 md:py-24 bg-slate-900/60 border-y border-slate-800/80">
+      <section className="relative py-16 md:py-24 bg-slate-900/40 border-y border-slate-800/80">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <div className="inline-block text-xs font-bold uppercase tracking-wider text-rose-400 bg-rose-950/60 border border-rose-800/50 rounded-full px-3 py-1 mb-3">
@@ -209,7 +222,7 @@ export function CounterLandingPage({
             </h2>
             <p className="mt-3 text-slate-400 text-sm sm:text-base">
               Real 1-star complaints from verified public reviews side-by-side with how{" "}
-              <span className="text-indigo-400 font-semibold">{data.challengerName}</span> solves them permanently.
+              <span className="text-white font-semibold">{data.challengerName}</span> solves them permanently.
             </p>
           </div>
 
@@ -218,15 +231,15 @@ export function CounterLandingPage({
             {data.battlecards.map((card, index) => (
               <div
                 key={card.id || index}
-                className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-black/40 transition-all hover:border-slate-700 hover:shadow-2xl hover:shadow-indigo-950/30"
+                className={`flex flex-col rounded-2xl border p-6 shadow-xl shadow-black/40 transition-all hover:shadow-2xl ${theme.palette.cardBg}`}
               >
                 {/* Header Category & Icon */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800/80">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
                       <DynamicIcon name={card.iconName} className="h-5 w-5" />
                     </div>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
                       Issue #{index + 1}
                     </span>
                   </div>
@@ -235,8 +248,8 @@ export function CounterLandingPage({
                   </span>
                 </div>
 
-                {/* Competitor Review Box (Negative) */}
-                <div className="mt-5 rounded-xl border border-rose-950 bg-rose-950/20 p-4">
+                {/* Competitor Review Box (Themed) */}
+                <div className={`mt-5 rounded-xl border p-4 ${theme.palette.quoteBorder}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-rose-300 uppercase tracking-wide">
                       {data.competitorName} Review
@@ -255,8 +268,8 @@ export function CounterLandingPage({
                   </div>
                 </div>
 
-                {/* Challenger Counter-Pitch (Positive Resolution - Inline Editable) */}
-                <div className="mt-5 flex-1 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4 relative group/cardedit">
+                {/* Challenger Counter-Pitch (Inline Editable) */}
+                <div className="mt-5 flex-1 rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4 relative group/cardedit">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 uppercase tracking-wide">
                       <Check className="h-4 w-4 stroke-[3]" />
@@ -310,7 +323,7 @@ export function CounterLandingPage({
                     <th className="py-4 px-6 text-xs sm:text-sm font-semibold text-rose-400/90 uppercase tracking-wider w-1/3 border-l border-slate-800 bg-rose-950/10">
                       {data.competitorName}
                     </th>
-                    <th className="py-4 px-6 text-xs sm:text-sm font-bold text-indigo-300 uppercase tracking-wider w-1/3 border-l border-slate-800 bg-indigo-950/30">
+                    <th className="py-4 px-6 text-xs sm:text-sm font-bold text-white uppercase tracking-wider w-1/3 border-l border-slate-800 bg-zinc-900/40">
                       {data.challengerName}
                     </th>
                   </tr>
@@ -332,7 +345,7 @@ export function CounterLandingPage({
                           <span>{row.competitorExperience}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 font-semibold text-white border-l border-slate-800 bg-indigo-950/20">
+                      <td className={`py-4 px-6 font-semibold text-white ${theme.palette.matrixWinner}`}>
                         <div className="flex items-start gap-2.5">
                           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
                             <Check className="h-3 w-3 stroke-[3]" />
@@ -396,10 +409,10 @@ export function CounterLandingPage({
         </div>
       </section>
 
-      {/* 6. Final High-Conversion CTA Banner (Headline Inline Editable) */}
+      {/* 6. Final High-Conversion CTA Banner (Themed) */}
       <section className="py-16 md:py-24 relative overflow-hidden">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 border border-indigo-700/50 p-8 sm:p-12 md:p-16 text-center shadow-2xl shadow-indigo-950/80">
+          <div className="relative rounded-3xl bg-zinc-900 border border-zinc-800 p-8 sm:p-12 md:p-16 text-center shadow-2xl">
             <div className="relative group/ctaedit">
               <h2
                 contentEditable={isEditable}
@@ -420,19 +433,19 @@ export function CounterLandingPage({
               )}
             </div>
 
-            <p className="mt-4 text-base sm:text-lg text-indigo-200 max-w-2xl mx-auto">
+            <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto">
               {data.finalCta.subheadline}
             </p>
             <div className="mt-8 flex justify-center">
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-extrabold text-indigo-950 shadow-xl transition-all hover:bg-indigo-50 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white"
+                className={`inline-flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-base font-extrabold shadow-xl transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 ${theme.palette.primaryCta}`}
               >
                 <span>{data.finalCta.buttonText}</span>
                 <ArrowRight className="h-5 w-5" />
               </button>
             </div>
-            <p className="mt-4 text-xs text-indigo-300/80">
+            <p className="mt-4 text-xs text-slate-400">
               Risk-free 14-day transition period • No upfront commitment required
             </p>
           </div>
@@ -458,7 +471,7 @@ export function CounterLandingPage({
             <span className="text-slate-800">•</span>
             <span>
               Powered by{" "}
-              <span className="font-semibold text-indigo-400">ChallengerPage</span>
+              <span className="font-semibold text-slate-300">ChallengerPage</span>
             </span>
           </div>
         </div>

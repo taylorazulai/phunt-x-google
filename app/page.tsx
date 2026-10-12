@@ -6,8 +6,8 @@ import { CompetitorReview, ChallengerPageData } from "@/lib/types";
 import { CounterLandingPage } from "@/components/CounterLandingPage";
 import { MakerForm } from "@/components/MakerForm";
 import { ActionToolbar } from "@/components/ActionToolbar";
+import Link from "next/link";
 import {
-  Sparkles,
   Monitor,
   Tablet,
   Smartphone,
@@ -15,11 +15,10 @@ import {
   SlidersHorizontal,
   Columns,
   Layers,
-  RotateCw,
-  Cpu,
+  Sparkles,
 } from "lucide-react";
 
-export default function Stage4StudioPage() {
+export default function ChallengerStudioPage() {
   const [selectedPresetId, setSelectedPresetId] = useState<string>(MOCK_PRESETS[0].id);
   const activePreset =
     MOCK_PRESETS.find((p) => p.id === selectedPresetId) || MOCK_PRESETS[0];
@@ -41,15 +40,16 @@ export default function Stage4StudioPage() {
 
   // Generation State
   const [generatedPageData, setGeneratedPageData] = useState<ChallengerPageData | null>(null);
-  const [generationModel, setGenerationModel] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStep, setGenerationStep] = useState<number>(1);
   const stepIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Stage 4 Inline Editing & Viewport State
+  // Stage 4/5 Inline Editing & Viewport State
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [previewViewport, setPreviewViewport] = useState<"full" | "tablet" | "mobile">("full");
-  const [activeLayoutView, setActiveLayoutView] = useState<"split" | "form" | "preview">("split");
+
+  // Core UX Requirement 4: Default arrival view mode is focused "intake"
+  const [activeLayoutView, setActiveLayoutView] = useState<"intake" | "preview" | "split">("intake");
 
   // Handler when reviews are loaded via scrape, manual paste, or preset
   const handleReviewsLoaded = (
@@ -64,11 +64,10 @@ export default function Stage4StudioPage() {
       setSelectedPresetId(presetId);
     }
     setGeneratedPageData(null);
-    setGenerationModel(null);
 
     if (source === "preset" && !presetId) {
       setFallbackNotice(
-        "Using pre-scraped verified reviews. Provide an Outscraper API key in .env for live searches."
+        "Using pre-scraped verified reviews. Configure Outscraper API key in .env for live searches."
       );
     } else {
       setFallbackNotice(null);
@@ -85,7 +84,6 @@ export default function Stage4StudioPage() {
     setChallengerName(preset.data.challengerName);
     setReviews(getPresetReviews(preset.id));
     setGeneratedPageData(null);
-    setGenerationModel(null);
     setFallbackNotice(null);
 
     if (preset.id === "preset-gym-pulsefit") {
@@ -136,14 +134,14 @@ export default function Stage4StudioPage() {
 
       if (result.success && result.data) {
         setGeneratedPageData(result.data);
-        setGenerationModel(result.modelUsed || "Gemini 3.8 Flash");
         if (result.notice) {
           setFallbackNotice(result.notice);
         } else {
           setFallbackNotice(null);
         }
 
-        setActiveLayoutView("split");
+        // Core UX Requirement 4: Auto-glide into "preview" on successful generation!
+        setActiveLayoutView("preview");
       } else {
         setFallbackNotice(result.error || "Failed to generate counter-page");
       }
@@ -158,7 +156,7 @@ export default function Stage4StudioPage() {
     }
   };
 
-  // Active display data: Prioritizes AI generated data, falls back to live reactive preset
+  // Active display data: Prioritizes AI generated data, falls back to reactive preset
   const displayPageData: ChallengerPageData = generatedPageData || {
     ...activePreset.data,
     competitorName: competitorName || activePreset.data.competitorName,
@@ -175,79 +173,30 @@ export default function Stage4StudioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100">
-      {/* Top Floating Control Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md px-4 py-3 shadow-2xl">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-          {/* Brand Logo & Stage Status */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-rose-500 to-indigo-700 font-bold text-white shadow-md shadow-indigo-500/20">
-              CP
+    <div className="min-h-screen bg-zinc-950 flex flex-col text-zinc-100 font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Core UX Requirement 3: Streamlined Single-Row Top Navigation Bar */}
+      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md px-4 py-2.5 shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          {/* Left: Clean Logo & Subtitle */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 font-bold text-sm tracking-tight text-white">
+              <span className="text-amber-400 font-black text-base">⚡</span>
+              <span>ChallengerPage</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-white">
-                  ChallengerPage
-                </span>
-                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-400 border border-emerald-500/20">
-                  STAGE 4 ACTIVE
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                KV Persistence, Maker Studio Controls & Code Exports
-              </p>
-            </div>
+            <span className="hidden sm:inline-block text-[11px] font-medium text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full">
+              Landing Page Engine
+            </span>
           </div>
 
-          {/* Model Badge & Quick Regenerate CTA */}
-          <div className="flex items-center gap-2">
-            {generationModel ? (
-              <div className="flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-950/60 px-3 py-1 text-xs text-indigo-300">
-                <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
-                <span className="font-semibold">{generationModel}</span>
-              </div>
-            ) : (
-              <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-400">
-                <Cpu className="h-3.5 w-3.5 text-slate-400" />
-                <span>Engine: Gemini 3.8 Flash (Fallback: 3.6 Flash)</span>
-              </div>
-            )}
-
-            {generatedPageData && (
-              <button
-                type="button"
-                disabled={isGenerating}
-                onClick={handleGenerate}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-850 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors disabled:opacity-50"
-                title="Regenerate copy with new variations"
-              >
-                <RotateCw className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-                <span>Regenerate Copy</span>
-              </button>
-            )}
-          </div>
-
-          {/* Layout Mode Switcher (Split / Form / Preview) */}
-          <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/90 p-1 text-xs">
+          {/* Center: View Switcher (Intake Form -> Preview Only -> Split View) */}
+          <div className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/90 p-1 text-xs">
             <button
               type="button"
-              onClick={() => setActiveLayoutView("split")}
+              onClick={() => setActiveLayoutView("intake")}
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-semibold transition-all ${
-                activeLayoutView === "split"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Columns className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Split View</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveLayoutView("form")}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-semibold transition-all ${
-                activeLayoutView === "form"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
+                activeLayoutView === "intake"
+                  ? "bg-zinc-800 text-white shadow-sm border border-zinc-700/60"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -258,89 +207,148 @@ export default function Stage4StudioPage() {
               onClick={() => setActiveLayoutView("preview")}
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-semibold transition-all ${
                 activeLayoutView === "preview"
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-zinc-800 text-white shadow-sm border border-zinc-700/60"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               <Eye className="h-3.5 w-3.5" />
               <span>Preview Only</span>
             </button>
-          </div>
-
-          {/* Viewport Width Emulation Controls */}
-          <div className="hidden xl:flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/90 p-1">
             <button
               type="button"
-              onClick={() => setPreviewViewport("full")}
-              title="Full Width Viewport"
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                previewViewport === "full"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-slate-200"
+              onClick={() => setActiveLayoutView("split")}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-semibold transition-all ${
+                activeLayoutView === "split"
+                  ? "bg-zinc-800 text-white shadow-sm border border-zinc-700/60"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              <Monitor className="h-3.5 w-3.5" />
-              <span>Full</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewViewport("tablet")}
-              title="Tablet Width (768px)"
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                previewViewport === "tablet"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Tablet className="h-3.5 w-3.5" />
-              <span>Tablet</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewViewport("mobile")}
-              title="Mobile Width (390px)"
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                previewViewport === "mobile"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Smartphone className="h-3.5 w-3.5" />
-              <span>Mobile</span>
+              <Columns className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Split View</span>
             </button>
           </div>
-        </div>
 
-        {/* Active Context Information Bar */}
-        <div className="mx-auto mt-2 flex max-w-7xl items-center justify-between border-t border-slate-850 pt-2 text-[11px] text-slate-400">
+          {/* Right: Viewport switchers & discreet engine indicator */}
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-300">Target Competitor:</span>
-            <span className="text-rose-400 font-semibold">{competitorName}</span>
-            <span className="text-slate-600">•</span>
-            <span className="font-semibold text-slate-300">Challenger:</span>
-            <span className="text-indigo-400 font-semibold">{challengerName}</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400">{reviews.length} reviews loaded</span>
-          </div>
-          <div className="hidden md:flex items-center gap-1.5 text-slate-500">
-            <Sparkles className="h-3 w-3 text-indigo-400" />
-            <span>
-              {generatedPageData
-                ? "Live AI copy generated • Click elements to edit or publish below"
-                : "Awaiting generation trigger"}
-            </span>
+            {/* Viewport switchers (only visible when in Preview or Split mode) */}
+            {activeLayoutView !== "intake" && (
+              <div className="hidden lg:flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/90 p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPreviewViewport("full")}
+                  title="Full Width Viewport"
+                  className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
+                    previewViewport === "full"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Monitor className="h-3.5 w-3.5" />
+                  <span>Desktop</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewViewport("tablet")}
+                  title="Tablet Width (768px)"
+                  className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
+                    previewViewport === "tablet"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Tablet className="h-3.5 w-3.5" />
+                  <span>Tablet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewViewport("mobile")}
+                  title="Mobile Width (390px)"
+                  className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
+                    previewViewport === "mobile"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                  <span>Mobile</span>
+                </button>
+              </div>
+            )}
+
+            {/* Discreet info pill (replaces noisy debug badges) */}
+            <div className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-400">
+              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>Gemini 3.8 Flash • v1.0</span>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Studio Body */}
-      <main className="flex-1 bg-slate-950 p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto max-w-7xl">
-          {activeLayoutView === "split" ? (
+      <main className="flex-1 bg-zinc-950 p-4 sm:p-6 lg:p-8 flex justify-center">
+        <div className="w-full max-w-7xl">
+          {activeLayoutView === "intake" ? (
+            /* Core UX Requirement 4: Focused Arrival Intake Form */
+            <div className="max-w-2xl mx-auto py-2 sm:py-6">
+              <div className="text-center mb-6">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  Turn Competitor Complaints into Your Counter-Page
+                </h1>
+                <p className="mt-2 text-xs sm:text-sm text-zinc-400">
+                  Target verified 1–3★ customer grievances and position your product as the obvious, objection-free alternative.
+                </p>
+              </div>
+
+              <MakerForm
+                reviews={reviews}
+                competitorName={competitorName}
+                setCompetitorName={setCompetitorName}
+                challengerName={challengerName}
+                setChallengerName={setChallengerName}
+                challengerPitch={challengerPitch}
+                setChallengerPitch={setChallengerPitch}
+                activePresetId={selectedPresetId}
+                onReviewsLoaded={handleReviewsLoaded}
+                onSelectPreset={handleSelectPreset}
+                fallbackNotice={fallbackNotice}
+                onGenerate={handleGenerate}
+                isGenerating={isGenerating}
+                generationStep={generationStep}
+              />
+            </div>
+          ) : activeLayoutView === "preview" ? (
+            /* Preview Only View with Action Toolbar */
+            <div className="flex flex-col items-center gap-4 py-2 max-w-5xl mx-auto w-full">
+              <div className="w-full">
+                <ActionToolbar
+                  pageData={displayPageData}
+                  isEditable={isEditable}
+                  onToggleEditable={() => setIsEditable((prev) => !prev)}
+                />
+              </div>
+
+              <div
+                className={`w-full transition-all duration-300 ${
+                  previewViewport === "mobile"
+                    ? "max-w-[420px] rounded-2xl border border-zinc-800 shadow-2xl overflow-hidden"
+                    : previewViewport === "tablet"
+                    ? "max-w-[820px] rounded-2xl border border-zinc-800 shadow-2xl overflow-hidden"
+                    : "max-w-none"
+                }`}
+              >
+                <CounterLandingPage
+                  data={displayPageData}
+                  isPreview
+                  isEditable={isEditable}
+                  onUpdate={handlePageUpdate}
+                />
+              </div>
+            </div>
+          ) : (
             /* Split View: Left Intake Form, Right Live Preview */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Left Column: Maker Form (5 cols on lg) */}
-              <div className="lg:col-span-5 space-y-6">
+              {/* Left Column: Intake Form (5 cols on lg) */}
+              <div className="lg:col-span-5 space-y-4">
                 <MakerForm
                   reviews={reviews}
                   competitorName={competitorName}
@@ -359,9 +367,8 @@ export default function Stage4StudioPage() {
                 />
               </div>
 
-              {/* Right Column: Live Landing Page Preview with ActionToolbar (7 cols on lg) */}
+              {/* Right Column: Live Landing Page Preview (7 cols on lg) */}
               <div className="lg:col-span-7 space-y-4">
-                {/* Action Toolbar */}
                 <ActionToolbar
                   pageData={displayPageData}
                   isEditable={isEditable}
@@ -370,9 +377,9 @@ export default function Stage4StudioPage() {
 
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-indigo-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                      Live Counter-Landing Page Preview
+                    <Layers className="h-4 w-4 text-zinc-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                      Live Preview
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -382,19 +389,20 @@ export default function Stage4StudioPage() {
                       </span>
                     )}
                     {generatedPageData ? (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
-                        AI Copy Active
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        <span>AI Copy Active</span>
                       </span>
                     ) : (
-                      <span className="rounded bg-indigo-500/10 px-2 py-0.5 text-[11px] font-semibold text-indigo-400 border border-indigo-500/20">
-                        Preview Draft
+                      <span className="rounded bg-zinc-800 px-2 py-0.5 text-[11px] font-medium text-zinc-400 border border-zinc-700/50">
+                        Preset Draft
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div
-                  className={`mx-auto rounded-2xl border border-slate-800 shadow-2xl overflow-hidden bg-slate-950 transition-all duration-300 ${
+                  className={`mx-auto rounded-2xl border border-zinc-800 shadow-2xl overflow-hidden bg-zinc-950 transition-all duration-300 ${
                     previewViewport === "mobile"
                       ? "max-w-[400px]"
                       : previewViewport === "tablet"
@@ -411,69 +419,22 @@ export default function Stage4StudioPage() {
                 </div>
               </div>
             </div>
-          ) : activeLayoutView === "form" ? (
-            /* Form Only View (Centered) */
-            <div className="max-w-3xl mx-auto py-4">
-              <MakerForm
-                reviews={reviews}
-                competitorName={competitorName}
-                setCompetitorName={setCompetitorName}
-                challengerName={challengerName}
-                setChallengerName={setChallengerName}
-                challengerPitch={challengerPitch}
-                setChallengerPitch={setChallengerPitch}
-                activePresetId={selectedPresetId}
-                onReviewsLoaded={handleReviewsLoaded}
-                onSelectPreset={handleSelectPreset}
-                fallbackNotice={fallbackNotice}
-                onGenerate={handleGenerate}
-                isGenerating={isGenerating}
-                generationStep={generationStep}
-              />
-            </div>
-          ) : (
-            /* Preview Only View with Action Toolbar */
-            <div className="flex flex-col items-center gap-4 py-4 max-w-5xl mx-auto">
-              <div className="w-full">
-                <ActionToolbar
-                  pageData={displayPageData}
-                  isEditable={isEditable}
-                  onToggleEditable={() => setIsEditable((prev) => !prev)}
-                />
-              </div>
-              <div
-                className={`w-full transition-all duration-300 ${
-                  previewViewport === "mobile"
-                    ? "max-w-[420px] rounded-2xl border-4 border-slate-800 shadow-2xl overflow-hidden"
-                    : previewViewport === "tablet"
-                    ? "max-w-[820px] rounded-2xl border-4 border-slate-800 shadow-2xl overflow-hidden"
-                    : "max-w-none"
-                }`}
-              >
-                <CounterLandingPage
-                  data={displayPageData}
-                  isPreview
-                  isEditable={isEditable}
-                  onUpdate={handlePageUpdate}
-                />
-              </div>
-            </div>
           )}
         </div>
       </main>
 
       {/* Studio Footer */}
-      <footer className="border-t border-slate-850 py-4 px-6 text-center text-xs text-slate-500 bg-slate-950">
+      <footer className="border-t border-zinc-800/80 py-4 px-6 text-center text-xs text-zinc-500 bg-zinc-950">
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>ChallengerPage • AI-Powered Counter-Landing Page Studio</span>
           <div className="flex items-center gap-4">
-            <a href="/terms" className="hover:text-slate-400 transition-colors">
+            <Link href="/terms" className="hover:text-zinc-300 transition-colors">
               Terms of Service
-            </a>
-            <span className="text-slate-800">•</span>
-            <a href="/privacy" className="hover:text-slate-400 transition-colors">
+            </Link>
+            <span className="text-zinc-800">•</span>
+            <Link href="/privacy" className="hover:text-zinc-300 transition-colors">
               Privacy Policy
-            </a>
+            </Link>
           </div>
         </div>
       </footer>

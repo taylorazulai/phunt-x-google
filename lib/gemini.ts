@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { nanoid } from "nanoid";
-import { ChallengerPageData, CompetitorReview } from "./types";
+import { ChallengerPageData, CompetitorReview, PageTheme } from "./types";
 import { MOCK_PRESETS } from "./mock-data";
 
 export const PRIMARY_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
@@ -25,6 +25,10 @@ const RESPONSE_SCHEMA = {
   properties: {
     competitorName: { type: Type.STRING },
     challengerName: { type: Type.STRING },
+    industry: {
+      type: Type.STRING,
+      enum: ["fitness", "legal", "saas", "coworking", "healthcare", "general"],
+    },
     hero: {
       type: Type.OBJECT,
       properties: {
@@ -95,6 +99,7 @@ const RESPONSE_SCHEMA = {
   required: [
     "competitorName",
     "challengerName",
+    "industry",
     "hero",
     "battlecards",
     "comparisonMatrix",
@@ -111,9 +116,87 @@ STRICT RULES:
 2. ZERO-HALLUCINATION QUOTES: CRITICAL: For every battlecard 'competitorQuote', you MUST extract an authentic verbatim quote excerpt directly from the provided review texts. Do NOT fabricate, invent, extrapolate, or alter the customer's quote. Include quotation marks.
 3. CONVERSION COUNTER-PITCH: For each battlecard 'counterPitch', position the challenger as the transparent, modern solution solving that exact pain point permanently, citing the challenger's pitch.
 4. HEADLINE & HERO: Craft an urgent, compelling counter-hook headline that appeals to dissatisfied customers searching for an alternative.
-5. COMPARISON MATRIX: Provide 4 to 5 sharp, side-by-side contrast rows comparing the painful legacy experience against the seamless challenger standard.
-6. MIGRATION FAQ: Write 3 clear FAQs that eliminate switching friction (e.g. data transfer, contracts, zero downtime).
-7. ICONS: For 'iconName', use only standard Lucide icon identifiers: ShieldAlert, CreditCard, Wrench, Clock, DollarSign, Users, Zap, Sparkles, Wifi, Building2, AlertCircle.`;
+5. INDUSTRY INFERENCE: Classify the business into one of: 'fitness', 'legal', 'saas', 'coworking', 'healthcare', or 'general'.
+6. COMPARISON MATRIX: Provide 4 to 5 sharp, side-by-side contrast rows comparing the painful legacy experience against the seamless challenger standard.
+7. MIGRATION FAQ: Write 3 clear FAQs that eliminate switching friction (e.g. data transfer, contracts, zero downtime).
+8. ICONS: For 'iconName', use only standard Lucide icon identifiers: ShieldAlert, CreditCard, Wrench, Clock, DollarSign, Users, Zap, Sparkles, Wifi, Building2, AlertCircle.`;
+
+export function getIndustryTheme(industry?: string): PageTheme {
+  const norm = (industry || "").toLowerCase();
+  if (norm.includes("fitness") || norm.includes("gym") || norm.includes("sport") || norm.includes("athletic")) {
+    return {
+      industry: "fitness",
+      palette: {
+        heroBg: "bg-stone-950",
+        accentBadge: "border-amber-500/30 bg-amber-950/60 text-amber-300",
+        primaryCta: "bg-amber-500 text-stone-950 hover:bg-amber-400 shadow-amber-500/20",
+        cardBg: "border-stone-800 bg-stone-900/90",
+        quoteBorder: "border-rose-950 bg-rose-950/30",
+        matrixWinner: "bg-amber-950/20 border-l border-stone-800 text-amber-300",
+      },
+      fontVibe: "bold-grotesque",
+    };
+  }
+
+  if (norm.includes("coworking") || norm.includes("space") || norm.includes("office") || norm.includes("agency")) {
+    return {
+      industry: "coworking",
+      palette: {
+        heroBg: "bg-zinc-950",
+        accentBadge: "border-emerald-500/30 bg-emerald-950/60 text-emerald-300",
+        primaryCta: "bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-600/30",
+        cardBg: "border-zinc-800 bg-zinc-900/90",
+        quoteBorder: "border-rose-950 bg-rose-950/20",
+        matrixWinner: "bg-emerald-950/20 border-l border-zinc-800 text-emerald-300",
+      },
+      fontVibe: "editorial-serif",
+    };
+  }
+
+  if (norm.includes("legal") || norm.includes("law") || norm.includes("finance") || norm.includes("wealth")) {
+    return {
+      industry: "legal",
+      palette: {
+        heroBg: "bg-slate-950",
+        accentBadge: "border-amber-600/30 bg-amber-950/40 text-amber-200",
+        primaryCta: "bg-amber-600 text-white hover:bg-amber-500 shadow-amber-600/20",
+        cardBg: "border-slate-800 bg-slate-900/90",
+        quoteBorder: "border-rose-950 bg-rose-950/20",
+        matrixWinner: "bg-slate-900 border-l border-slate-800 text-amber-200",
+      },
+      fontVibe: "editorial-serif",
+    };
+  }
+
+  if (norm.includes("health") || norm.includes("care") || norm.includes("clinic") || norm.includes("med")) {
+    return {
+      industry: "healthcare",
+      palette: {
+        heroBg: "bg-slate-950",
+        accentBadge: "border-sky-500/30 bg-sky-950/60 text-sky-300",
+        primaryCta: "bg-sky-600 text-white hover:bg-sky-500 shadow-sky-600/30",
+        cardBg: "border-slate-800 bg-slate-900/90",
+        quoteBorder: "border-rose-950 bg-rose-950/20",
+        matrixWinner: "bg-sky-950/20 border-l border-slate-800 text-sky-300",
+      },
+      fontVibe: "modern-sans",
+    };
+  }
+
+  // Default SaaS theme
+  return {
+    industry: "saas",
+    palette: {
+      heroBg: "bg-slate-950",
+      accentBadge: "border-indigo-500/30 bg-indigo-950/60 text-indigo-300",
+      primaryCta: "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/30",
+      cardBg: "border-slate-800 bg-slate-900/90",
+      quoteBorder: "border-rose-950 bg-rose-950/20",
+      matrixWinner: "bg-indigo-950/20 border-l border-slate-800 text-indigo-300",
+    },
+    fontVibe: "modern-sans",
+  };
+}
 
 /**
  * Generates an objection-handling counter-page using Gemini 3.8 Flash,
@@ -168,7 +251,7 @@ Generate the complete ChallengerPageData JSON now.`;
 
     const parsed = JSON.parse(text);
     return {
-      data: formatPageData(parsed, challengerName, competitorName),
+      data: formatPageData(parsed, challengerName, competitorName, challengerPitch),
       modelUsed: PRIMARY_MODEL,
       isFallback: false,
     };
@@ -195,7 +278,7 @@ Generate the complete ChallengerPageData JSON now.`;
 
       const parsed = JSON.parse(fallbackText);
       return {
-        data: formatPageData(parsed, challengerName, competitorName),
+        data: formatPageData(parsed, challengerName, competitorName, challengerPitch),
         modelUsed: `${FALLBACK_MODEL} (High-Throughput Fallback)`,
         isFallback: false,
         notice: `Generated via high-throughput fallback model (${FALLBACK_MODEL}).`,
@@ -212,9 +295,10 @@ Generate the complete ChallengerPageData JSON now.`;
  * Normalizes parsed model JSON into strict ChallengerPageData.
  */
 function formatPageData(
-  parsed: Partial<ChallengerPageData>,
+  parsed: Partial<ChallengerPageData> & { industry?: string },
   challengerName: string,
-  competitorName: string
+  competitorName: string,
+  challengerPitch?: string
 ): ChallengerPageData {
   const battlecards = (parsed.battlecards || []).map((b, idx) => ({
     id: b.id || `bc-gen-${idx + 1}-${nanoid(6)}`,
@@ -235,6 +319,11 @@ function formatPageData(
     question: f.question || "How does the migration process work?",
     answer: f.answer || "Our team handles the transition with zero downtime and guaranteed continuity.",
   }));
+
+  const inferredIndustry =
+    parsed.industry ||
+    parsed.theme?.industry ||
+    `${competitorName} ${challengerName} ${challengerPitch || ""}`;
 
   return {
     id: parsed.id || nanoid(10),
@@ -262,6 +351,7 @@ function formatPageData(
         `Join hundreds of customers who switched to ${challengerName} this month.`,
       buttonText: parsed.finalCta?.buttonText || "Claim Your 14-Day Free Switcher Pass",
     },
+    theme: parsed.theme || getIndustryTheme(inferredIndustry),
   };
 }
 
@@ -333,6 +423,7 @@ function generateOfflineFallback(
       headline: `Switch from ${competitorName} to ${challengerName} Today`,
       subheadline: `Risk-free 14-day transition period with zero downtime guarantee.`,
     },
+    theme: basePreset.data.theme || getIndustryTheme("saas"),
   };
 
   return {

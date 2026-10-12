@@ -97,6 +97,18 @@ export const MOCK_PRESET_GYM: ChallengerPageData = {
       "Join over 400 former big-box members who reclaimed their time and fitness goals this month.",
     buttonText: "Start Your 14-Day Risk-Free Trial",
   },
+  theme: {
+    industry: "fitness",
+    palette: {
+      heroBg: "bg-stone-950",
+      accentBadge: "border-amber-500/30 bg-amber-950/60 text-amber-300",
+      primaryCta: "bg-amber-500 text-stone-950 hover:bg-amber-400 shadow-amber-500/20",
+      cardBg: "border-stone-800 bg-stone-900/90",
+      quoteBorder: "border-rose-950 bg-rose-950/30",
+      matrixWinner: "bg-amber-950/20 border-l border-stone-800 text-amber-300",
+    },
+    fontVibe: "bold-grotesque",
+  },
 };
 
 export const MOCK_PRESET_CRM: ChallengerPageData = {
@@ -196,6 +208,18 @@ export const MOCK_PRESET_CRM: ChallengerPageData = {
       "Join over 1,200 fast-growing sales teams that switched from legacy enterprise bloat to EchoDesk.",
     buttonText: "Migrate from TitanCRM in 15 Minutes",
   },
+  theme: {
+    industry: "saas",
+    palette: {
+      heroBg: "bg-slate-950",
+      accentBadge: "border-indigo-500/30 bg-indigo-950/60 text-indigo-300",
+      primaryCta: "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/30",
+      cardBg: "border-slate-800 bg-slate-900/90",
+      quoteBorder: "border-rose-950 bg-rose-950/20",
+      matrixWinner: "bg-indigo-950/20 border-l border-slate-800 text-indigo-300",
+    },
+    fontVibe: "modern-sans",
+  },
 };
 
 export const MOCK_PRESET_COWORKING: ChallengerPageData = {
@@ -294,6 +318,18 @@ export const MOCK_PRESET_COWORKING: ChallengerPageData = {
     subheadline:
       "Join over 250 founders, designers, and remote engineering teams thriving in our sunlit spaces.",
     buttonText: "Reserve Your Free Day Pass",
+  },
+  theme: {
+    industry: "coworking",
+    palette: {
+      heroBg: "bg-zinc-950",
+      accentBadge: "border-emerald-500/30 bg-emerald-950/60 text-emerald-300",
+      primaryCta: "bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-600/30",
+      cardBg: "border-zinc-800 bg-zinc-900/90",
+      quoteBorder: "border-rose-950 bg-rose-950/20",
+      matrixWinner: "bg-emerald-950/20 border-l border-zinc-800 text-emerald-300",
+    },
+    fontVibe: "editorial-serif",
   },
 };
 

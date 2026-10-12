@@ -53,6 +53,19 @@ export interface ChallengerPageFinalCta {
   buttonText: string;
 }
 
+export interface PageTheme {
+  industry: "fitness" | "legal" | "saas" | "coworking" | "healthcare" | "general";
+  palette: {
+    heroBg: string;
+    accentBadge: string;
+    primaryCta: string;
+    cardBg: string;
+    quoteBorder: string;
+    matrixWinner: string;
+  };
+  fontVibe: "modern-sans" | "editorial-serif" | "bold-grotesque";
+}
+
 export interface ChallengerPageData {
   id: string;                    // nanoid / unique slug
   createdAt: number;             // Timestamp in ms
@@ -63,6 +76,7 @@ export interface ChallengerPageData {
   comparisonMatrix: ComparisonMatrixItem[];
   migrationFaq: FaqItem[];
   finalCta: ChallengerPageFinalCta;
+  theme?: PageTheme;
 }
 
 export interface ScrapeRequest {
