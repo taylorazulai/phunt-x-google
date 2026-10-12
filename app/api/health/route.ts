@@ -1,0 +1,13 @@
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  return NextResponse.json(
+    {
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: Date.now(),
+      service: "challenger-page",
+    },
+    { status: 200 }
+  );
+}

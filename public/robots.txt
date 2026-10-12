@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Allow: /p/
+Allow: /privacy
+Allow: /terms
+Disallow: /api/
