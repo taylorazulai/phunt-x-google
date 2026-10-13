@@ -88,7 +88,7 @@ export interface ScrapeRequest {
 export interface ScrapeResponse {
   success: boolean;
   reviews: CompetitorReview[];
-  source: "outscraper" | "preset" | "manual";
+  source: "outscraper" | "preset" | "manual" | "fallback";
   competitorName: string;
   fallbackNotice?: string;
 }
@@ -100,6 +100,7 @@ export interface MockPreset {
   category: string;
   data: ChallengerPageData;
   reviews?: CompetitorReview[];
+  competitorName?: string;
 }
 
 export interface LeadRecord {

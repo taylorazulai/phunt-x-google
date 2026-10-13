@@ -1,137 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ScrapeRequest, ScrapeResponse, CompetitorReview } from "@/lib/types";
-import { fetchCompetitorReviews, sanitizeReviewText, OutscraperError } from "@/lib/outscraper";
-import { MOCK_PRESETS, getPresetReviews } from "@/lib/mock-data";
-import { nanoid } from "nanoid";
+import { NextResponse } from "next/server";
+import { fetchCompetitorReviews } from "@/lib/outscraper";
+import { mockPresets } from "@/lib/mock-data";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body: ScrapeRequest = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
     const { competitorQuery, presetId, manualReviews } = body;
 
-    // 1. Preset Ingestion Mode (0ms latency demo path)
+    // 1. Preset Mode
     if (presetId) {
-      const preset = MOCK_PRESETS.find((p) => p.id === presetId) || MOCK_PRESETS[0];
-      const reviews = getPresetReviews(preset.id);
-
-      const response: ScrapeResponse = {
+      const preset = mockPresets.find((p) => p.id === presetId) || mockPresets[0];
+      return NextResponse.json({
         success: true,
-        reviews,
+        reviews: preset.reviews || [],
+        competitorName: preset.competitorName || preset.data.competitorName,
         source: "preset",
-        competitorName: preset.data.competitorName,
-      };
-      return NextResponse.json(response);
+      });
     }
 
-    // 2. Manual Reviews Ingestion Mode
+    // 2. Manual Paste Mode
     if (manualReviews && Array.isArray(manualReviews) && manualReviews.length > 0) {
-      const parsedReviews: CompetitorReview[] = [];
+      const parsedReviews = manualReviews.map((text: string, idx: number) => ({
+        id: `manual-${idx}-${Date.now()}`,
+        author: `Customer Review ${idx + 1}`,
+        rating: 1,
+        text: text.slice(0, 600),
+      }));
+      return NextResponse.json({
+        success: true,
+        reviews: parsedReviews,
+        competitorName: competitorQuery || "Competitor",
+        source: "manual",
+      });
+    }
 
-      for (let i = 0; i < manualReviews.length; i++) {
-        const raw = manualReviews[i];
-        if (!raw || typeof raw !== "string") continue;
-
-        // Extract rating if user prefixed it like "[1 star]" or "Rating: 2"
-        let rating = 1;
-        const ratingMatch = raw.match(/(?:rating:?\s*|[\[\(])?([1-3])(?:\s*(?:star|stars|\/5))?[\]\)]?/i);
-        if (ratingMatch) {
-          const parsedRating = parseInt(ratingMatch[1], 10);
-          if (parsedRating >= 1 && parsedRating <= 3) {
-            rating = parsedRating;
-          }
-        }
-
-        const cleaned = sanitizeReviewText(raw, 600);
-        if (cleaned.length < 10) continue;
-
-        parsedReviews.push({
-          id: `manual-${nanoid(8)}`,
-          author: `Customer Reviewer #${i + 1}`,
-          rating,
-          text: cleaned,
-          publishDate: new Date().toISOString(),
+    // 3. Live Google Maps Scrape Mode
+    if (competitorQuery && typeof competitorQuery === "string" && competitorQuery.trim()) {
+      try {
+        const { reviews, competitorName } = await fetchCompetitorReviews(competitorQuery, 20);
+        return NextResponse.json({
+          success: true,
+          reviews,
+          competitorName,
+          source: "outscraper",
+        });
+      } catch (scrapeError: unknown) {
+        const msg = scrapeError instanceof Error ? scrapeError.message : "Outscraper error";
+        console.warn("Outscraper scrape warning:", msg);
+        return NextResponse.json({
+          success: false,
+          reviews: mockPresets[0].reviews || [],
+          competitorName: "Sample Competitor",
+          source: "fallback",
+          fallbackNotice: `Notice: ${msg}. Loaded sample reviews for preview.`,
         });
       }
-
-      if (parsedReviews.length > 0) {
-        const response: ScrapeResponse = {
-          success: true,
-          reviews: parsedReviews,
-          source: "manual",
-          competitorName: competitorQuery?.trim() || "Competitor",
-        };
-        return NextResponse.json(response);
-      }
     }
 
-    // 3. Google Maps Outscraper Scrape Mode
-    if (competitorQuery && competitorQuery.trim().length > 0) {
-      const trimmedQuery = competitorQuery.trim();
-
-      try {
-        const scraped = await fetchCompetitorReviews(trimmedQuery, 20);
-        const response: ScrapeResponse = {
-          success: true,
-          reviews: scraped.reviews,
-          source: "outscraper",
-          competitorName: scraped.competitorName,
-        };
-        return NextResponse.json(response);
-      } catch (scrapeErr: unknown) {
-        const errMsg = scrapeErr instanceof Error ? scrapeErr.message : "Outscraper API unavailable";
-        const isMissingKey =
-          scrapeErr instanceof OutscraperError && scrapeErr.code === "MISSING_API_KEY";
-
-        // Intelligent preset matcher based on query keywords
-        const lowerQ = trimmedQuery.toLowerCase();
-        let fallbackPreset = MOCK_PRESETS[0]; // default to Gym
-        if (lowerQ.includes("crm") || lowerQ.includes("sales") || lowerQ.includes("software") || lowerQ.includes("saas")) {
-          fallbackPreset = MOCK_PRESETS[1];
-        } else if (lowerQ.includes("work") || lowerQ.includes("space") || lowerQ.includes("office") || lowerQ.includes("suite")) {
-          fallbackPreset = MOCK_PRESETS[2];
-        }
-
-        const fallbackReviews = getPresetReviews(fallbackPreset.id);
-
-        const notice = isMissingKey
-          ? "Outscraper API key is not configured in Cloud Run / environment. Loaded verified benchmark reviews for preview."
-          : `Outscraper notice: ${errMsg}. Loaded verified benchmark reviews for preview.`;
-
-        const response: ScrapeResponse = {
-          success: true,
-          reviews: fallbackReviews,
-          source: "preset",
-          competitorName: trimmedQuery.startsWith("http")
-            ? fallbackPreset.data.competitorName
-            : trimmedQuery,
-          fallbackNotice: notice,
-        };
-
-        return NextResponse.json(response, { status: 200 });
-      }
-    }
-
-    // Fallback if no valid parameters provided
     return NextResponse.json(
-      {
-        success: false,
-        reviews: [],
-        source: "preset",
-        competitorName: "",
-        fallbackNotice: "Please provide a competitor name, Google Maps link, manual reviews, or select a preset.",
-      },
+      { error: "Missing competitorQuery, presetId, or manualReviews" },
       { status: 400 }
     );
-  } catch (err: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        reviews: [],
-        source: "preset",
-        competitorName: "",
-        fallbackNotice: err instanceof Error ? err.message : "Internal ingestion server error",
-      },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

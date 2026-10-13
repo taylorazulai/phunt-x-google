@@ -32,7 +32,7 @@ interface MakerFormProps {
   onReviewsLoaded: (
     reviews: CompetitorReview[],
     competitorName: string,
-    source: "outscraper" | "preset" | "manual",
+    source: "outscraper" | "preset" | "manual" | "fallback",
     presetId?: string,
     notice?: string
   ) => void;
@@ -88,7 +88,7 @@ export function MakerForm({
 
       const data: ScrapeResponse = await res.json();
 
-      if (!res.ok && !data.success) {
+      if (!res.ok) {
         throw new Error(data.fallbackNotice || "Failed to fetch competitor reviews");
       }
 

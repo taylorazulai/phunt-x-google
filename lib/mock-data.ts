@@ -455,6 +455,7 @@ export const MOCK_PRESETS: MockPreset[] = [
     category: "Fitness & Wellness",
     data: MOCK_PRESET_GYM,
     reviews: MOCK_REVIEWS_GYM,
+    competitorName: MOCK_PRESET_GYM.competitorName,
   },
   {
     id: "preset-crm-echodesk",
@@ -463,6 +464,7 @@ export const MOCK_PRESETS: MockPreset[] = [
     category: "SaaS & Software",
     data: MOCK_PRESET_CRM,
     reviews: MOCK_REVIEWS_CRM,
+    competitorName: MOCK_PRESET_CRM.competitorName,
   },
   {
     id: "preset-coworking-hivework",
@@ -471,8 +473,11 @@ export const MOCK_PRESETS: MockPreset[] = [
     category: "Real Estate & Co-Working",
     data: MOCK_PRESET_COWORKING,
     reviews: MOCK_REVIEWS_COWORKING,
+    competitorName: MOCK_PRESET_COWORKING.competitorName,
   },
 ];
+
+export const mockPresets = MOCK_PRESETS;
 
 export function getPresetReviews(presetId: string) {
   const preset = MOCK_PRESETS.find((p) => p.id === presetId);

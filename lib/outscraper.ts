@@ -1,16 +1,14 @@
 import { CompetitorReview } from "./types";
-import { nanoid } from "nanoid";
 
 export class OutscraperError extends Error {
-  constructor(message: string, public readonly code: string) {
+  constructor(message: string, public readonly code: string = "OUTSCRAPER_ERROR") {
     super(message);
     this.name = "OutscraperError";
   }
 }
 
 /**
- * Sanitizes and truncates a customer review string.
- * Strips excessive blank lines, trims whitespace, and limits to 600 characters.
+ * Sanitizes and truncates a customer review string to a maximum length.
  */
 export function sanitizeReviewText(rawText: string, maxLength: number = 600): string {
   if (!rawText) return "";
@@ -34,201 +32,194 @@ export function sanitizeReviewText(rawText: string, maxLength: number = 600): st
   return `${truncated}...`;
 }
 
-interface OutscraperRawReview {
+interface OutscraperReviewItem {
   review_id?: string;
+  reviews_id?: string;
+  google_id?: string;
   author_title?: string;
   review_rating?: number;
   review_text?: string;
   review_datetime_utc?: string;
-  [key: string]: unknown;
+  review_timestamp?: number;
 }
 
-interface OutscraperPlaceData {
+interface OutscraperPlaceItem {
   name?: string;
-  query?: string;
-  reviews_data?: OutscraperRawReview[];
-  [key: string]: unknown;
+  rating?: number;
+  reviews?: number;
+  reviews_data?: OutscraperReviewItem[];
 }
 
 interface OutscraperResponse {
   id?: string;
   status?: string;
-  data?: unknown;
-  [key: string]: unknown;
+  data?: OutscraperPlaceItem[];
+  error?: boolean;
+  errorMessage?: string;
 }
 
 /**
- * Calls Outscraper Google Maps Reviews API to fetch 1-3 star negative customer reviews.
- * Supports synchronous mode and transparent task polling for asynchronous task returns.
+ * Fetches negative 1-3 star competitor reviews from Google Maps via Outscraper.
+ * Enforces sort: lowest_rating, ignoreEmpty: true, and async task polling.
  */
 export async function fetchCompetitorReviews(
   query: string,
   limit: number = 20
-): Promise<{ competitorName: string; reviews: CompetitorReview[] }> {
-  // Check primary and alias environment variables
+): Promise<{ reviews: CompetitorReview[]; competitorName: string }> {
   const rawKey = process.env.OUTSCRAPER_API_KEY || process.env.OUTSCRAPER_KEY;
   const apiKey = rawKey ? rawKey.trim() : "";
 
   if (!apiKey || apiKey === "your_outscraper_api_key") {
     throw new OutscraperError(
-      "OUTSCRAPER_API_KEY is not configured in Cloud Run / environment.",
+      "OUTSCRAPER_API_KEY is not configured.",
       "MISSING_API_KEY"
     );
   }
 
-  const sanitizedQuery = query.trim();
-  if (!sanitizedQuery) {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) {
     throw new OutscraperError("Query cannot be empty.", "EMPTY_QUERY");
   }
 
-  const endpoint = new URL("https://api.app.outscraper.com/maps/reviews-v3");
-  endpoint.searchParams.set("query", sanitizedQuery);
-  endpoint.searchParams.set("reviews_limit", String(Math.min(limit, 25)));
-  endpoint.searchParams.set("reviewsLimit", String(Math.min(limit, 25)));
-  endpoint.searchParams.set("cutoff_rating", "3");
-  endpoint.searchParams.set("cutoffRating", "3");
-  endpoint.searchParams.set("async", "false"); // Request synchronous response where possible
-  endpoint.searchParams.set("language", "en");
+  // Mandatory Outscraper parameters to get negative reviews with text:
+  const params = new URLSearchParams({
+    query: cleanQuery,
+    reviewsLimit: String(Math.max(limit, 20)),
+    sort: "lowest_rating", // MANDATORY: Forces 1-star reviews first
+    cutoffRating: "3", // MANDATORY: Caps results at 3 stars maximum
+    ignoreEmpty: "true", // MANDATORY: Excludes star-only reviews with no written text
+    language: "en",
+    async: "false", // Synchronous response if available
+  });
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 28000); // 28s total timeout
+  const endpoint = `https://api.app.outscraper.com/maps/reviews-v3?${params.toString()}`;
 
+  let response: Response;
   try {
-    const res = await fetch(endpoint.toString(), {
+    response = await fetch(endpoint, {
       method: "GET",
       headers: {
         "X-API-KEY": apiKey,
-        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-      signal: controller.signal,
+      // 25-second timeout for live scraping
+      signal: AbortSignal.timeout(25000),
     });
-
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      throw new OutscraperError(
-        `Outscraper API responded with HTTP ${res.status}: ${errBody || res.statusText}`,
-        `HTTP_${res.status}`
-      );
-    }
-
-    let json: OutscraperResponse = await res.json();
-
-    // Handling Asynchronous Outscraper Tasks:
-    // If Outscraper returns status "Pending" or "In Progress", poll the request endpoint
-    if (
-      json &&
-      json.id &&
-      (json.status === "Pending" || json.status === "In Progress" || !json.data)
-    ) {
-      const pollStart = Date.now();
-      const MAX_POLL_MS = 22000; // Poll for up to 22 seconds
-
-      while (
-        json.id &&
-        (json.status === "Pending" || json.status === "In Progress" || !json.data) &&
-        Date.now() - pollStart < MAX_POLL_MS
-      ) {
-        // Wait 2 seconds before next poll
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const pollRes = await fetch(
-          `https://api.app.outscraper.com/requests/${json.id}`,
-          {
-            headers: {
-              "X-API-KEY": apiKey,
-              Accept: "application/json",
-            },
-            signal: controller.signal,
-          }
-        );
-
-        if (pollRes.ok) {
-          const pollJson = (await pollRes.json()) as OutscraperResponse;
-          json = pollJson;
-          if (json.status === "Success" || (Array.isArray(json.data) && json.data.length > 0)) {
-            break;
-          }
-        }
-      }
-    }
-
-    clearTimeout(timeoutId);
-
-    // Extract raw review items and business name from response
-    const rawItems: OutscraperRawReview[] = [];
-    let detectedName = sanitizedQuery;
-
-    if (json && Array.isArray(json.data)) {
-      for (const entry of json.data) {
-        if (Array.isArray(entry)) {
-          for (const nested of entry) {
-            if (nested && typeof nested === "object") {
-              const place = nested as OutscraperPlaceData;
-              if (place.name) detectedName = place.name;
-              if (Array.isArray(place.reviews_data)) {
-                rawItems.push(...place.reviews_data);
-              }
-            }
-          }
-        } else if (entry && typeof entry === "object") {
-          const place = entry as OutscraperPlaceData;
-          if (place.name) detectedName = place.name;
-          if (Array.isArray(place.reviews_data)) {
-            rawItems.push(...place.reviews_data);
-          } else if (place.review_text) {
-            rawItems.push(place as OutscraperRawReview);
-          }
-        }
-      }
-    }
-
-    // Filter, sanitize, and normalize into CompetitorReview[]
-    const normalizedReviews: CompetitorReview[] = [];
-
-    for (const r of rawItems) {
-      const rawText = r.review_text?.trim();
-      if (!rawText) continue;
-
-      const rating = Number(r.review_rating) || 1;
-      if (rating > 3) continue; // Guarantee cutoff <= 3
-
-      const sanitized = sanitizeReviewText(rawText, 600);
-      if (sanitized.length < 10) continue;
-
-      normalizedReviews.push({
-        id: r.review_id || `outscraper-${nanoid(8)}`,
-        author: r.author_title?.trim() || "Verified Google Reviewer",
-        rating: Math.min(Math.max(rating, 1), 3),
-        text: sanitized,
-        publishDate: r.review_datetime_utc || new Date().toISOString(),
-      });
-    }
-
-    if (normalizedReviews.length === 0) {
-      throw new OutscraperError(
-        `Outscraper processed "${sanitizedQuery}" but found zero 1-3 star customer reviews. The business may have exclusively 4-5 star reviews or no public reviews.`,
-        "NO_REVIEWS_FOUND"
-      );
-    }
-
-    return {
-      competitorName: detectedName,
-      reviews: normalizedReviews.slice(0, limit),
-    };
   } catch (err: unknown) {
-    clearTimeout(timeoutId);
-    if (err instanceof OutscraperError) {
-      throw err;
-    }
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new OutscraperError(
-        "Outscraper API task timed out while waiting for Google Maps reviews to resolve.",
-        "TIMEOUT"
-      );
+    if (err instanceof Error && err.name === "TimeoutError") {
+      throw new OutscraperError("Outscraper request timed out after 25s.", "TIMEOUT");
     }
     throw new OutscraperError(
-      err instanceof Error ? err.message : "Failed to connect to Outscraper API",
+      err instanceof Error ? err.message : "Network error contacting Outscraper",
       "NETWORK_ERROR"
     );
   }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new OutscraperError(
+      `Outscraper HTTP ${response.status}: ${errorText || response.statusText}`,
+      `HTTP_${response.status}`
+    );
+  }
+
+  const json: OutscraperResponse = await response.json();
+
+  // If Outscraper queued the task asynchronously, poll results endpoint:
+  if (json.status === "Pending" && json.id) {
+    const polledData = await pollOutscraperTask(json.id, apiKey);
+    return processOutscraperData(polledData, cleanQuery);
+  }
+
+  return processOutscraperData(json, cleanQuery);
+}
+
+async function pollOutscraperTask(
+  requestId: string,
+  apiKey: string
+): Promise<OutscraperResponse> {
+  const pollUrl = `https://api.app.outscraper.com/requests/${requestId}`;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < 25000) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const res = await fetch(pollUrl, {
+        headers: { "X-API-KEY": apiKey },
+      });
+      if (res.ok) {
+        const data: OutscraperResponse = await res.json();
+        if (data.status === "Success") {
+          return data;
+        }
+        if (data.status === "Failure") {
+          throw new OutscraperError(
+            data.errorMessage || "Outscraper scraping task failed.",
+            "TASK_FAILED"
+          );
+        }
+      }
+    } catch (pollErr: unknown) {
+      if (pollErr instanceof OutscraperError) throw pollErr;
+      // Continue polling on transient network hiccup
+    }
+  }
+
+  throw new OutscraperError(
+    "Outscraper async polling timed out after 25s.",
+    "POLL_TIMEOUT"
+  );
+}
+
+function processOutscraperData(
+  json: OutscraperResponse,
+  fallbackQuery: string
+): { reviews: CompetitorReview[]; competitorName: string } {
+  if (!json.data || !Array.isArray(json.data) || json.data.length === 0) {
+    throw new OutscraperError(
+      "Outscraper returned empty data array for this query.",
+      "EMPTY_DATA"
+    );
+  }
+
+  const place = json.data[0];
+  const competitorName =
+    place.name ||
+    fallbackQuery.replace(/^https?:\/\/[^\/]+\//, "").slice(0, 30);
+  const rawReviews = place.reviews_data || [];
+
+  if (rawReviews.length === 0) {
+    throw new OutscraperError(
+      "No reviews_data found inside place object.",
+      "NO_REVIEWS_DATA"
+    );
+  }
+
+  const normalizedReviews: CompetitorReview[] = rawReviews
+    .map((r, index) => {
+      const rating =
+        typeof r.review_rating === "number" ? r.review_rating : 1;
+      const text = sanitizeReviewText(r.review_text || "", 600);
+      return {
+        id: r.review_id || r.reviews_id || `rev-${index}-${Date.now()}`,
+        author: r.author_title?.trim() || "Verified Customer",
+        rating,
+        text,
+        publishDate: r.review_datetime_utc || undefined,
+      };
+    })
+    // Filter to 1-3 stars with substantive text
+    .filter((r) => r.rating <= 3 && r.text.length > 5);
+
+  if (normalizedReviews.length === 0) {
+    throw new OutscraperError(
+      "Outscraper returned reviews, but none had rating <= 3 with written text.",
+      "NO_NEGATIVE_REVIEWS"
+    );
+  }
+
+  return {
+    reviews: normalizedReviews.slice(0, 20),
+    competitorName,
+  };
 }

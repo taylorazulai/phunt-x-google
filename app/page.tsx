@@ -55,7 +55,7 @@ export default function ChallengerStudioPage() {
   const handleReviewsLoaded = (
     newReviews: CompetitorReview[],
     compName: string,
-    source: "outscraper" | "preset" | "manual",
+    source: "outscraper" | "preset" | "manual" | "fallback",
     presetId?: string,
     notice?: string
   ) => {
