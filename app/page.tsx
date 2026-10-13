@@ -56,7 +56,8 @@ export default function ChallengerStudioPage() {
     newReviews: CompetitorReview[],
     compName: string,
     source: "outscraper" | "preset" | "manual",
-    presetId?: string
+    presetId?: string,
+    notice?: string
   ) => {
     setReviews(newReviews);
     if (compName) setCompetitorName(compName);
@@ -65,10 +66,8 @@ export default function ChallengerStudioPage() {
     }
     setGeneratedPageData(null);
 
-    if (source === "preset" && !presetId) {
-      setFallbackNotice(
-        "Using pre-scraped verified reviews. Configure Outscraper API key in .env for live searches."
-      );
+    if (notice) {
+      setFallbackNotice(notice);
     } else {
       setFallbackNotice(null);
     }

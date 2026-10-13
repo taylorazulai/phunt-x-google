@@ -33,7 +33,8 @@ interface MakerFormProps {
     reviews: CompetitorReview[],
     competitorName: string,
     source: "outscraper" | "preset" | "manual",
-    presetId?: string
+    presetId?: string,
+    notice?: string
   ) => void;
   onSelectPreset: (presetId: string) => void;
   fallbackNotice?: string | null;
@@ -92,7 +93,13 @@ export function MakerForm({
       }
 
       setCompetitorName(data.competitorName);
-      onReviewsLoaded(data.reviews, data.competitorName, data.source);
+      onReviewsLoaded(
+        data.reviews,
+        data.competitorName,
+        data.source,
+        undefined,
+        data.fallbackNotice
+      );
     } catch (err: unknown) {
       setErrorMsg(
         err instanceof Error ? err.message : "An unexpected network error occurred."

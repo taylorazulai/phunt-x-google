@@ -22,15 +22,15 @@ if (!globalThis._leadCache) {
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
 function getRedisClient(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const rawUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL;
+  const rawToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN;
+  const url = rawUrl ? rawUrl.trim() : "";
+  const token = rawToken ? rawToken.trim() : "";
 
   if (
     !url ||
-    url.trim() === "" ||
     url.includes("your-database.upstash.io") ||
     !token ||
-    token.trim() === "" ||
     token === "your_upstash_rest_token"
   ) {
     return null;

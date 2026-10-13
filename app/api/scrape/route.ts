@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ScrapeRequest, ScrapeResponse, CompetitorReview } from "@/lib/types";
-import { fetchCompetitorReviews, sanitizeReviewText } from "@/lib/outscraper";
+import { fetchCompetitorReviews, sanitizeReviewText, OutscraperError } from "@/lib/outscraper";
 import { MOCK_PRESETS, getPresetReviews } from "@/lib/mock-data";
 import { nanoid } from "nanoid";
 
@@ -78,8 +78,9 @@ export async function POST(req: NextRequest) {
         };
         return NextResponse.json(response);
       } catch (scrapeErr: unknown) {
-        // Graceful Fallback Mode: return demo preset reviews with clear informative notice
         const errMsg = scrapeErr instanceof Error ? scrapeErr.message : "Outscraper API unavailable";
+        const isMissingKey =
+          scrapeErr instanceof OutscraperError && scrapeErr.code === "MISSING_API_KEY";
 
         // Intelligent preset matcher based on query keywords
         const lowerQ = trimmedQuery.toLowerCase();
@@ -92,6 +93,10 @@ export async function POST(req: NextRequest) {
 
         const fallbackReviews = getPresetReviews(fallbackPreset.id);
 
+        const notice = isMissingKey
+          ? "Outscraper API key is not configured in Cloud Run / environment. Loaded verified benchmark reviews for preview."
+          : `Outscraper notice: ${errMsg}. Loaded verified benchmark reviews for preview.`;
+
         const response: ScrapeResponse = {
           success: true,
           reviews: fallbackReviews,
@@ -99,7 +104,7 @@ export async function POST(req: NextRequest) {
           competitorName: trimmedQuery.startsWith("http")
             ? fallbackPreset.data.competitorName
             : trimmedQuery,
-          fallbackNotice: `Notice: ${errMsg}. Loaded verified 1-3★ benchmark reviews for ${fallbackPreset.data.competitorName} to keep your workflow moving.`,
+          fallbackNotice: notice,
         };
 
         return NextResponse.json(response, { status: 200 });

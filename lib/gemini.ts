@@ -207,11 +207,15 @@ export async function generateChallengerPage(
 ): Promise<GenerateResult> {
   const { competitorName, challengerName, challengerPitch, reviews } = options;
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const rawKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GEMINI_KEY ||
+    process.env.GOOGLE_API_KEY;
+  const apiKey = rawKey ? rawKey.trim() : "";
 
   // 1. If API key is missing or dummy placeholder, use offline synthesis directly
-  if (!apiKey || apiKey.trim() === "" || apiKey === "your_gemini_api_key") {
-    return generateOfflineFallback(options, "GEMINI_API_KEY is not configured in environment.");
+  if (!apiKey || apiKey === "your_gemini_api_key") {
+    return generateOfflineFallback(options, "GEMINI_API_KEY is not configured in Cloud Run / environment.");
   }
 
   // Format reviews for prompt

@@ -15,7 +15,6 @@ export class OutscraperError extends Error {
 export function sanitizeReviewText(rawText: string, maxLength: number = 600): string {
   if (!rawText) return "";
 
-  // Replace 3+ consecutive newlines with max 2, trim trailing/leading spaces per line
   const cleaned = rawText
     .split("\n")
     .map((line) => line.trim())
@@ -27,7 +26,6 @@ export function sanitizeReviewText(rawText: string, maxLength: number = 600): st
     return cleaned;
   }
 
-  // Truncate at word boundary if possible
   const truncated = cleaned.slice(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
   if (lastSpace > maxLength - 40) {
@@ -52,19 +50,28 @@ interface OutscraperPlaceData {
   [key: string]: unknown;
 }
 
+interface OutscraperResponse {
+  id?: string;
+  status?: string;
+  data?: unknown;
+  [key: string]: unknown;
+}
+
 /**
  * Calls Outscraper Google Maps Reviews API to fetch 1-3 star negative customer reviews.
- * Adheres strictly to hackathon time constraints with built-in timeout and graceful fallback.
+ * Supports synchronous mode and transparent task polling for asynchronous task returns.
  */
 export async function fetchCompetitorReviews(
   query: string,
   limit: number = 20
 ): Promise<{ competitorName: string; reviews: CompetitorReview[] }> {
-  const apiKey = process.env.OUTSCRAPER_API_KEY;
+  // Check primary and alias environment variables
+  const rawKey = process.env.OUTSCRAPER_API_KEY || process.env.OUTSCRAPER_KEY;
+  const apiKey = rawKey ? rawKey.trim() : "";
 
-  if (!apiKey || apiKey.trim() === "" || apiKey === "your_outscraper_api_key") {
+  if (!apiKey || apiKey === "your_outscraper_api_key") {
     throw new OutscraperError(
-      "OUTSCRAPER_API_KEY is not configured or is a placeholder.",
+      "OUTSCRAPER_API_KEY is not configured in Cloud Run / environment.",
       "MISSING_API_KEY"
     );
   }
@@ -77,12 +84,14 @@ export async function fetchCompetitorReviews(
   const endpoint = new URL("https://api.app.outscraper.com/maps/reviews-v3");
   endpoint.searchParams.set("query", sanitizedQuery);
   endpoint.searchParams.set("reviews_limit", String(Math.min(limit, 25)));
-  endpoint.searchParams.set("cutoff_rating", "3"); // 1, 2, and 3 star reviews only
-  endpoint.searchParams.set("async", "false");
+  endpoint.searchParams.set("reviewsLimit", String(Math.min(limit, 25)));
+  endpoint.searchParams.set("cutoff_rating", "3");
+  endpoint.searchParams.set("cutoffRating", "3");
+  endpoint.searchParams.set("async", "false"); // Request synchronous response where possible
   endpoint.searchParams.set("language", "en");
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s safety abort
+  const timeoutId = setTimeout(() => controller.abort(), 28000); // 28s total timeout
 
   try {
     const res = await fetch(endpoint.toString(), {
@@ -94,8 +103,6 @@ export async function fetchCompetitorReviews(
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       throw new OutscraperError(
@@ -104,9 +111,50 @@ export async function fetchCompetitorReviews(
       );
     }
 
-    const json = await res.json();
+    let json: OutscraperResponse = await res.json();
 
-    // Outscraper returns either { data: [ [ { reviews_data: [...] } ] ] } or { data: [ { reviews_data: [...] } ] }
+    // Handling Asynchronous Outscraper Tasks:
+    // If Outscraper returns status "Pending" or "In Progress", poll the request endpoint
+    if (
+      json &&
+      json.id &&
+      (json.status === "Pending" || json.status === "In Progress" || !json.data)
+    ) {
+      const pollStart = Date.now();
+      const MAX_POLL_MS = 22000; // Poll for up to 22 seconds
+
+      while (
+        json.id &&
+        (json.status === "Pending" || json.status === "In Progress" || !json.data) &&
+        Date.now() - pollStart < MAX_POLL_MS
+      ) {
+        // Wait 2 seconds before next poll
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const pollRes = await fetch(
+          `https://api.app.outscraper.com/requests/${json.id}`,
+          {
+            headers: {
+              "X-API-KEY": apiKey,
+              Accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
+
+        if (pollRes.ok) {
+          const pollJson = (await pollRes.json()) as OutscraperResponse;
+          json = pollJson;
+          if (json.status === "Success" || (Array.isArray(json.data) && json.data.length > 0)) {
+            break;
+          }
+        }
+      }
+    }
+
+    clearTimeout(timeoutId);
+
+    // Extract raw review items and business name from response
     const rawItems: OutscraperRawReview[] = [];
     let detectedName = sanitizedQuery;
 
@@ -145,7 +193,7 @@ export async function fetchCompetitorReviews(
       if (rating > 3) continue; // Guarantee cutoff <= 3
 
       const sanitized = sanitizeReviewText(rawText, 600);
-      if (sanitized.length < 15) continue; // Skip single word / meaningless reviews
+      if (sanitized.length < 10) continue;
 
       normalizedReviews.push({
         id: r.review_id || `outscraper-${nanoid(8)}`,
@@ -158,7 +206,7 @@ export async function fetchCompetitorReviews(
 
     if (normalizedReviews.length === 0) {
       throw new OutscraperError(
-        `No 1-3 star reviews found for "${sanitizedQuery}". Competitor might have high rating or no public reviews.`,
+        `Outscraper processed "${sanitizedQuery}" but found zero 1-3 star customer reviews. The business may have exclusively 4-5 star reviews or no public reviews.`,
         "NO_REVIEWS_FOUND"
       );
     }
@@ -174,7 +222,7 @@ export async function fetchCompetitorReviews(
     }
     if (err instanceof Error && err.name === "AbortError") {
       throw new OutscraperError(
-        "Outscraper API request timed out after 18 seconds.",
+        "Outscraper API task timed out while waiting for Google Maps reviews to resolve.",
         "TIMEOUT"
       );
     }
