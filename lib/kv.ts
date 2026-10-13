@@ -21,18 +21,26 @@ if (!globalThis._leadCache) {
 // 30 Days TTL in seconds
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
+function isValidRedisUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    // Reject sample placeholder hostname from .env.example
+    if (parsed.hostname === "your-database.upstash.io") return false;
+    return parsed.hostname.endsWith(".upstash.io") || parsed.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
 function getRedisClient(): Redis | null {
   const rawUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL;
   const rawToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.REDIS_TOKEN;
   const url = rawUrl ? rawUrl.trim() : "";
   const token = rawToken ? rawToken.trim() : "";
 
-  if (
-    !url ||
-    url.includes("your-database.upstash.io") ||
-    !token ||
-    token === "your_upstash_rest_token"
-  ) {
+  if (!isValidRedisUrl(url) || !token || token === "your_upstash_rest_token") {
     return null;
   }
 

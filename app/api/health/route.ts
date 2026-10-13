@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const mask = (val?: string) => {
-    if (!val || val.trim() === "" || val.includes("your_") || val.includes("your-database")) {
+    if (!val) return "NOT_SET";
+    const clean = val.trim();
+    if (clean === "" || clean.startsWith("your_") || clean.startsWith("https://your-")) {
       return "NOT_SET";
     }
-    const clean = val.trim();
     if (clean.length <= 8) {
       return `**** (${clean.length} chars)`;
     }
